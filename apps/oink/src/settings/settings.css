@@ -212,7 +212,20 @@ mark.setp__hit { background: var(--ok-accent-tint); color: inherit; border-radiu
 .lat__glitch-hit { position: absolute; width: 12px; }
 .lat__glitch-devices { display: grid; gap: 4px; }
 
-.setp__row[data-parent="touchpadInject"], .setp__row[data-parent="syncSystemArrangement"] { padding-inline-start: 40px; }
+.setp__row[data-parent="touchpadInject"], .setp__row[data-parent="syncSystemArrangement"], .setp__row[data-parent="pointerTrail"], .setp__row[data-parent="pointerStyle"] { padding-inline-start: 40px; }
+
+.setp__trail-color { display: grid; gap: 12px; }
+.setp__appearance-line { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.setp__color-picker { display: inline-flex; align-items: center; gap: 8px; font: 400 13px/1.4 var(--ok-font); color: var(--ok-text-2); }
+.setp__color-picker input { box-sizing: border-box; width: 34px; height: 30px; padding: 2px; border: 1px solid var(--ok-line); border-radius: 6px; background: var(--ok-fill); cursor: pointer; }
+.setp__color-picker input:focus-visible { outline: 2px solid var(--ok-info); outline-offset: 2px; }
+.setp__color-picker input:disabled { opacity: .4; cursor: default; }
+.setp__pointer-preview { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid var(--ok-line); border-radius: 8px; background: linear-gradient(90deg, #e4e4e4 50%, #666 50%); isolation: isolate; }
+.setp__pointer-preview svg { width: 20px; height: 23px; fill: white; stroke: #111; stroke-width: 1.2px; }
+.setp__pointer-preview[data-size="large"] svg { width: 26px; height: 29px; }
+.setp__pointer-preview[data-size="extra_large"] svg { width: 32px; height: 36px; }
+.setp__pointer-preview[data-style="black"] svg { fill: #111; stroke: white; }
+.setp__pointer-preview[data-style="inverted"] svg { fill: white; stroke: none; mix-blend-mode: difference; }
 
 .setp__microphone-description { display: block; }
 .setp__microphone-link { color: var(--ok-info); text-decoration: none; }

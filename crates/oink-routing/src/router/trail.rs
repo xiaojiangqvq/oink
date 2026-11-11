@@ -1,9 +1,9 @@
-//! 光标定位拖尾：在输入源上识别快速画圈，告诉指针所在的设备画拖尾。
+//! 光标定位拖尾：输入源按所选模式识别快速画圈或任意移动，告诉指针所在的设备画拖尾。
 //!
-//! - **源端**（物理键鼠所在设备）：每个本机 `PointerDelta` 按手部 plane 喂给 [`CircleDetector`]，不论焦点
+//! - **源端**（物理键鼠所在设备）：每个本机 `PointerDelta` 喂给所选的 [`CircleDetector`] 入口，不论焦点
 //!   在哪台设备。触发后把「画拖尾」交给当前焦点机：焦点机是本机就记在本机，否则发
 //!   `ControlMsg::CursorTrail{active: true}`；焦点换到另一台设备时给旧的发 `false`、给新的发 `true`，
-//!   所以画圈途中跨设备不清零，拖尾跟着指针走。结束（停住、按下按钮、游戏模式、关闭设置）
+//!   所以移动途中跨设备不清零，拖尾跟着指针走。结束（停住、按下按钮、游戏模式、关闭设置）
 //!   时发 `false`。
 //! - **焦点机**：记下要它画拖尾的源（含本机）；有源、焦点在本机、不在游戏模式、本机光标没有按着的按钮、
 //!   本机设置开着时输出 `Output::CursorTrail{active: true}`，由服务进程按本机光标的轨迹绘制。
@@ -14,7 +14,7 @@ use crate::circle::CircleDetector;
 
 #[derive(Debug, Default)]
 pub(super) struct TrailState {
-    /// 源端：画圈识别。
+    /// 源端：画圈或任意移动触发，共用停顿计时。
     detector: CircleDetector,
     /// 源端：已让哪台设备画拖尾（本机或远端焦点机）。
     target: Option<DeviceId>,
@@ -66,15 +66,21 @@ impl Router {
             self.trail_reset(why);
             return;
         }
-        let k = if self.holder == self.me() {
-            self.pointer_reference_per_native_unit()
+        if self.cfg.settings.cursor_trail_always {
+            // No scale conversion is needed for a nonzero-motion trigger; keeping
+            // native units also avoids rounding very small movements down to zero.
+            self.trail.detector.any_motion(dx, dy, now);
         } else {
-            self.reference_per_native_unit()
-        };
-        self.trail.detector.motion(dx * k, dy * k, now);
+            let k = if self.holder == self.me() {
+                self.pointer_reference_per_native_unit()
+            } else {
+                self.reference_per_native_unit()
+            };
+            self.trail.detector.motion(dx * k, dy * k, now);
+        }
     }
 
-    /// 源端能否识别：设置开着、不在游戏模式、本机外设没有按着按钮（拖动窗口、画图时画圈不触发）。
+    /// 源端能否触发：设置开着、不在游戏模式、本机外设没有按着按钮（拖动窗口、画图时不触发）。
     /// 不能时给出原因。
     fn trail_source_blocked(&self) -> Option<&'static str> {
         if !self.cfg.settings.cursor_trail {
@@ -89,7 +95,7 @@ impl Router {
     }
 
     /// 源端清零识别；已触发时记下原因（识别器自己的结束原因见 `circle gesture ended`）。
-    fn trail_reset(&mut self, why: &'static str) {
+    pub(super) fn trail_reset(&mut self, why: &'static str) {
         if self.trail.detector.engaged() {
             tracing::debug!(reason = why, "cursor trail source stopped");
         }
@@ -326,6 +332,157 @@ mod tests {
     use super::*;
     use crate::display_layout::TopologyLayout;
     use oink_display::layout::{Layout, ScreenPlacement, SizeSource};
+
+    fn motion_router(me: DeviceId, peer: DeviceId) -> Router {
+        let mut router = Router::new(
+            RouterConfig::new(
+                oink_foundation::session::Boot {
+                    device_id: me,
+                    nonce: [me.0[0]; 16],
+                },
+                "trail-test",
+                Os::Windows,
+            ),
+            super::super::connection_tests::session_layout(me, peer),
+        );
+        let mut settings = router.config().settings.clone();
+        settings.cursor_trail_always = true;
+        router.set_settings(settings);
+        router.test_connect(peer, 0);
+        router.set_game_mode(GameMode::Off);
+        router.drain_outputs();
+        router
+    }
+
+    fn move_pointer(router: &mut Router, now: Micros) -> Vec<Output> {
+        router.on_local_event(
+            &CapturedEvent {
+                event: InputEvent::PointerDelta { dx: 0.001, dy: 0. },
+                physical: true,
+                source: SourceKind::Mouse,
+                time_us: now,
+                cursor: None,
+            },
+            now,
+        );
+        router.drain_outputs()
+    }
+
+    #[test]
+    fn default_trigger_keeps_original_circle_gesture() {
+        let mut router = motion_router(DeviceId([1; 32]), DeviceId([2; 32]));
+        let mut settings = router.config().settings.clone();
+        settings.cursor_trail_always = crate::RoutingSettings::default().cursor_trail_always;
+        assert!(!settings.cursor_trail_always);
+        router.set_settings(settings);
+        for now in [1, 8_000, 16_000, 500_000] {
+            assert!(!move_pointer(&mut router, now).contains(&Output::CursorTrail { active: true }));
+        }
+        // The original plane-scaled, 2.5-turns/sec circle still triggers only
+        // after two complete turns, with a radius in the accepted range.
+        let radius = (20. / 686.) / router.pointer_reference_per_native_unit();
+        let mut previous = (radius, 0.);
+        let mut first = None;
+        for i in 1..=150 {
+            let t = f64::from(i) / 125.;
+            let angle = std::f64::consts::TAU * 2.5 * t;
+            let next = (radius * angle.cos(), radius * angle.sin());
+            router.trail_motion(next.0 - previous.0, next.1 - previous.1, 1_000_000 + i as u64 * 8_000);
+            if router.drain_outputs().contains(&Output::CursorTrail { active: true }) {
+                first = Some(t);
+            }
+            previous = next;
+        }
+        let turns = first.expect("circle mode must still trigger") * 2.5;
+        assert!((2.0..2.2).contains(&turns), "triggered at {turns} turns");
+    }
+
+    #[test]
+    fn changing_trigger_mode_clears_active_state_and_requires_the_new_trigger() {
+        let mut router = motion_router(DeviceId([1; 32]), DeviceId([2; 32]));
+        assert!(move_pointer(&mut router, 1).contains(&Output::CursorTrail { active: true }));
+        let mut settings = router.config().settings.clone();
+        settings.cursor_trail_always = false;
+        router.set_settings(settings.clone());
+        assert!(router.drain_outputs().contains(&Output::CursorTrail { active: false }));
+        assert!(!move_pointer(&mut router, 2).contains(&Output::CursorTrail { active: true }));
+        settings.cursor_trail_always = true;
+        router.set_settings(settings.clone());
+        assert!(!router.drain_outputs().contains(&Output::CursorTrail { active: true }));
+        assert!(move_pointer(&mut router, 3).contains(&Output::CursorTrail { active: true }));
+        settings.cursor_trail = false;
+        router.set_settings(settings);
+        assert!(router.drain_outputs().contains(&Output::CursorTrail { active: false }));
+        assert!(!move_pointer(&mut router, 4).contains(&Output::CursorTrail { active: true }));
+        assert!(
+            router.config().settings.cursor_trail_always,
+            "master switch retains trigger choice"
+        );
+    }
+
+    #[test]
+    fn ordinary_movement_starts_local_trail_and_idle_stops_it() {
+        let mut router = motion_router(DeviceId([1; 32]), DeviceId([2; 32]));
+        assert!(move_pointer(&mut router, 1).contains(&Output::CursorTrail { active: true }));
+        router.tick(120_001);
+        assert!(!router.drain_outputs().contains(&Output::CursorTrail { active: false }));
+        router.tick(120_002);
+        assert!(router.drain_outputs().contains(&Output::CursorTrail { active: false }));
+        assert!(move_pointer(&mut router, 200_000).contains(&Output::CursorTrail { active: true }));
+    }
+
+    #[test]
+    fn ordinary_movement_preserves_setting_button_and_game_gates() {
+        let mut router = motion_router(DeviceId([1; 32]), DeviceId([2; 32]));
+        let mut now = 0;
+        for gate in 0..3 {
+            now += 200_000;
+            assert!(move_pointer(&mut router, now).contains(&Output::CursorTrail { active: true }));
+            match gate {
+                0 => router.cfg.settings.cursor_trail = false,
+                1 => {
+                    router.buttons.insert(MouseButton::Left, Target::Local);
+                }
+                _ => router.set_game_mode(GameMode::On),
+            }
+            assert!(router.drain_outputs().contains(&Output::CursorTrail { active: false }));
+            assert!(!move_pointer(&mut router, now + 1).contains(&Output::CursorTrail { active: true }));
+            assert_eq!(router.trail_deadline(), None);
+            router.cfg.settings.cursor_trail = true;
+            router.buttons.clear();
+            router.set_game_mode(GameMode::Off);
+            assert!(!router.drain_outputs().contains(&Output::CursorTrail { active: true }));
+        }
+        assert!(move_pointer(&mut router, now + 2).contains(&Output::CursorTrail { active: true }));
+    }
+
+    #[test]
+    fn ordinary_movement_notifies_remote_focus_and_stops_after_idle() {
+        let a = DeviceId([1; 32]);
+        let b = DeviceId([2; 32]);
+        let mut source = motion_router(a, b);
+        let mut target = motion_router(b, a);
+        source.holder = b;
+        source.claim = b;
+        source.fresh_join = false;
+        let outputs = move_pointer(&mut source, 1);
+        assert!(!outputs.contains(&Output::CursorTrail { active: true }));
+        assert!(outputs.iter().any(|output| matches!(
+            output,
+            Output::Send { to, msg: Message::Control(ControlMsg::CursorTrail { active: true }), .. } if *to == b
+        )));
+        target.input_message(a, Message::Control(ControlMsg::CursorTrail { active: true }), 1);
+        assert!(target.drain_outputs().contains(&Output::CursorTrail { active: true }));
+
+        source.tick(120_002);
+        assert!(source.drain_outputs().iter().any(|output| matches!(
+            output,
+            Output::Send { to, msg: Message::Control(ControlMsg::CursorTrail { active: false }), .. } if *to == b
+        )));
+        target.input_message(a, Message::Control(ControlMsg::CursorTrail { active: false }), 120_002);
+        assert!(target.drain_outputs().contains(&Output::CursorTrail { active: false }));
+        assert!(!target.trail.drawing);
+    }
 
     #[test]
     fn handoff_maps_physical_offsets_across_gaps_without_clamping_or_hand_gain() {

@@ -307,10 +307,11 @@ input::-ms-reveal, input::-ms-clear { display: none; }
 .upgrade-notes li::marker { color: var(--ok-text-3); }
 
 .win__side-ver {
-  position: absolute; right: 6px; bottom: 0; display: flex; align-items: center; height: var(--s);
+  position: absolute; right: 6px; bottom: 0; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; gap: 3px; height: var(--s);
   font: 500 11.5px/1 var(--ok-font-mono); font-variant-numeric: tabular-nums; color: var(--ok-text-3); white-space: nowrap;
   transition: opacity var(--ok-dur-2) var(--ok-ease-out) var(--ok-dur-3), visibility 0s;
 }
+.win__side-edition { font: 450 10px/1 var(--ok-font); color: var(--ok-text-2); }
 .win__side:not([data-open]) .win__side-ver {
   opacity: 0; visibility: hidden;
   transition: opacity var(--ok-dur-1) var(--ok-ease-in), visibility 0s linear var(--ok-dur-1);
@@ -577,6 +578,7 @@ input::-ms-reveal, input::-ms-clear { display: none; }
 .about__main .app-icon { filter: drop-shadow(0 6px 14px rgb(20 22 30 / .18)); }
 .about__word { display: block; height: 30px; width: auto; margin-top: 18px; color: var(--ok-text); }
 .about__ver { margin: 10px 0 0; font: 500 12.5px/1 var(--ok-font-mono); color: var(--ok-text-2); }
+.about__edition { margin: 8px 0 0; font: 500 12px/1.4 var(--ok-font); color: var(--ok-text-2); text-align: center; }
 .about__repo { margin-top: 18px; }
 .about__gh { width: 16px; height: 16px; fill: currentColor; }
 .about__oss { margin-top: 2px; color: var(--ok-text-2); }

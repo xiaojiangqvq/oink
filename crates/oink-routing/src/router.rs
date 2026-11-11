@@ -773,6 +773,9 @@ impl Router {
     }
 
     pub fn set_settings(&mut self, settings: crate::config::RoutingSettings) {
+        if self.cfg.settings.cursor_trail_always != settings.cursor_trail_always {
+            self.trail_reset("trigger mode changed");
+        }
         self.resistance = None;
         let dnd_was = self.dnd_enabled();
         self.apply_source_modes(settings.mouse_mode, settings.keyboard_mode);

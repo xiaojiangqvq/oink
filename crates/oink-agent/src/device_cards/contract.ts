@@ -262,6 +262,9 @@ export interface UiPreferences {
   ui_language: "auto" | "zh-Hans" | "en" | "ja" | "ko";
   theme_mode: "system" | "light" | "dark";
   theme_accent: { light: string; dark: string }; // validated opaque #RRGGBB
+  trail_color: string | null; // validated opaque #RRGGBB, null follows theme accent
+  pointer_style: "system" | "white" | "black" | "inverted";
+  pointer_size: "normal" | "large" | "extra_large";
   show_status_icon: boolean;
   confirm_quit: boolean;
   paste_as_file: boolean;

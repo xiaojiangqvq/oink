@@ -1,3 +1,5 @@
+> **제3자 수정 버전 / Third-party modification:** This branch is Pointer Trail Enhanced, based on Oink v0.3.4. It is not an official release. See the [modified features and installation limits](README.md) before using the original documentation below.
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/assets/banner-ko-dark.png">

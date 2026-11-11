@@ -785,6 +785,7 @@ pub(crate) fn input_settings(node: &Node) -> InputSettings {
         return_pointer_on_display_sleep: r.return_pointer_on_display_sleep,
         wake_displays_on_input: r.wake_displays_on_input,
         cursor_trail: r.cursor_trail,
+        cursor_trail_always: r.cursor_trail_always,
         cursor_trail_duration_ms: s.cursor_trail_duration_ms,
         gap_travel: layout_settings.gap_travel,
     }
@@ -1000,12 +1001,30 @@ impl AgentApi for Node {
         let _gate = self.owner_gate();
         let applied = {
             let mut config = lock(&self.inner.config);
-            let settings = patch.apply(&UiPreferences::from(&config.settings))?;
-            config
-                .update_local(&patch.value(), |current| settings.apply(current))
-                .map_err(|error| ApiError::Internal {
-                    message: format!("saving local preferences: {error}"),
-                })?;
+            let previous = UiPreferences::from(&config.settings);
+            let settings = patch.apply(&previous)?;
+            #[cfg(windows)]
+            let pointer_changed = self.native_services_enabled()
+                && (settings.pointer_style != previous.pointer_style || settings.pointer_size != previous.pointer_size);
+            let mut commit = || config.update_local(&patch.value(), |current| settings.apply(current));
+            #[cfg(windows)]
+            let saved = if pointer_changed {
+                // The native transaction snapshots actual Windows values, which
+                // may differ from the last saved preference after external edits.
+                crate::pointer_style::apply_and_commit(
+                    self.data_dir(),
+                    settings.pointer_style,
+                    settings.pointer_size,
+                    commit,
+                )
+            } else {
+                commit()
+            };
+            #[cfg(not(windows))]
+            let saved = commit();
+            saved.map_err(|error| ApiError::Internal {
+                message: format!("applying local preferences: {error:#}"),
+            })?;
             UiPreferences::from(&config.settings)
         };
         self.apply_trail_appearance();
@@ -1425,6 +1444,7 @@ impl AgentApi for Node {
             "forward_injected_input",
             "forward_wheel_by_lines",
             "take_foreground_on_leave",
+            "cursor_trail_always",
         ] {
             if let Some(value) = local_patch.as_object_mut().and_then(|p| p.remove(key)) {
                 let routing = local_patch
@@ -1469,6 +1489,7 @@ impl AgentApi for Node {
             routing.return_pointer_on_display_sleep = s.return_pointer_on_display_sleep;
             routing.wake_displays_on_input = s.wake_displays_on_input;
             routing.cursor_trail = s.cursor_trail;
+            routing.cursor_trail_always = s.cursor_trail_always;
             candidate.cursor_trail_duration_ms = s.cursor_trail_duration_ms;
             candidate.event_frequency = s.event_frequency;
             candidate.emergency_hold_ms = emergency_hold;

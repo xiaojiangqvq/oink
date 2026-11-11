@@ -174,10 +174,22 @@ export const SECTIONS: SectionMeta[] = [
             { id: 'nativeMultifinger', parent: 'touchpadInject', get label() { return tr('注入原生多指手势'); }, get desc() { return tr('关闭后，缩放和多指手势改用快捷键映射；不影响双指滚动'); }, get keywords() { return tr('触控板 多指 手势 缩放 捏合 快捷键 原生 precision touchpad'); }, only: 'win' },
             { id: 'macScrollFeel', parent: 'touchpadInject', get label() { return tr('模拟 Mac 触摸板滚动'); }, get desc() { return tr('被 Mac 的触摸板操控时，还原其双指滚动手感'); }, get keywords() { return tr('触控板 滚动 Mac macOS 双指 手感 惯性'); }, only: 'win' },
             { id: 'pointerTrail', get label() {
-                    return tr('快速画圈显示指针尾迹');
+                    return tr('显示指针尾迹');
                 }, get desc() {
-                    return tr('找不到指针时，快速画圈晃动鼠标，指针会拖出尾迹');
+                    return tr('在指针后显示彩色尾迹；按住鼠标按键或开启游戏模式时暂停');
                 }, get keywords() { return tr('指针 光标 找不到 晃动'); } },
+            { id: 'pointerTrailAlways', parent: 'pointerTrail', get label() {
+                    return tr('触发方式');
+                }, get desc() {
+                    return tr('选择快速画圈定位，或每次移动都显示尾迹');
+                }, get keywords() { return `${tr('快速画圈（原版）')} ${tr('移动即显示')}`; } },
+            { id: 'trailColor', parent: 'pointerTrail', get label() { return tr('尾迹颜色'); },
+                get desc() { return tr('设置本机屏幕上的尾迹颜色，不改变界面主题色'); },
+                get keywords() { return `${tr('跟随主题')} ${tr('自定义颜色')}`; } },
+            { id: 'pointerStyle', only: 'win', get label() { return tr('鼠标箭头样式'); },
+                get desc() { return tr('更改本机 Windows 的箭头指针，对其他软件也生效；选择“原系统样式”可恢复。'); } },
+            { id: 'pointerSize', only: 'win', parent: 'pointerStyle', get label() { return tr('箭头大小'); },
+                get desc() { return tr('仅更改箭头；文本和窗口缩放指针保持不变'); } },
         ],
     },
     {

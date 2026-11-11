@@ -13,6 +13,7 @@ import { MicrophoneInput } from './MicrophoneInput';
 import { ScreenPointerGains } from './ScreenPointerGains';
 import { VirtualMicrophoneDescription, VirtualMicrophone, MicrophonePermission } from './VirtualMicrophone';
 import { GainControl } from './GainControl';
+import { PointerSizeControl, PointerStyleControl, TrailColorControl } from './PointerAppearance';
 import { KeyMapControl } from './KeyMap';
 import { AudioQualityChart } from './AudioQualityChart';
 import { ChartSpanToggle, LatencyChart, spanDescription, useChartSpan } from './LatencyChart';
@@ -302,6 +303,18 @@ export function SettingsPage({ open, platform, api, capsIme, query, jump, onActi
             case 'clipReceive':
             case 'clipSend':
                 return sw(item.id);
+            case 'pointerTrailAlways': return {
+                node: <Select size="sm" aria-label={label} value={prefs.pointerTrailAlways ? 'motion' : 'circle'} disabled={!prefs.pointerTrail} onChange={value => {
+                    set('pointerTrailAlways', value === 'motion');
+                    onLog(`${label} → ${value === 'motion' ? tr('移动即显示') : tr('快速画圈（原版）')}`);
+                }} options={[
+                    { value: 'circle', label: tr('快速画圈（原版）') },
+                    { value: 'motion', label: tr('移动即显示') },
+                ]}/>,
+            };
+            case 'trailColor': return { node: <TrailColorControl local={api.local} saveLocal={api.saveLocal} label={label} disabled={!prefs.pointerTrail}/>, stack: true };
+            case 'pointerStyle': return { node: <PointerStyleControl local={api.local} saveLocal={api.saveLocal} label={label}/> };
+            case 'pointerSize': return { node: <PointerSizeControl local={api.local} saveLocal={api.saveLocal} label={label}/> };
             case 'touchpadInject': return {
                 desc: !contactsAvailable ? <>{text(item.desc, platform)} · {tr('原生触摸板注入暂不可用')}</> : undefined,
                 node: <Switch aria-label={label} checked={prefs.touchpadInject} onChange={toggle('touchpadInject',label)} disabled={!contactsAvailable}/>,
@@ -351,7 +364,7 @@ export function SettingsPage({ open, platform, api, capsIme, query, jump, onActi
                 };
             case 'version':
                 return {
-                    desc: <span className="setp__mono">v{version}</span>,
+                    desc: <span className="setp__mono">v{version} · {tr('尾迹增强版 · 第三方修改版')}</span>,
                     node: <UpdateCheck status={agentState.update} open={open}/>,
                 };
             case 'updates': return { desc: manualUpdates(agentState.update) ? tr('此版本需要手动下载并安装更新。') : undefined, node: <UpdatePreferences status={agentState.update} label={label}/> };

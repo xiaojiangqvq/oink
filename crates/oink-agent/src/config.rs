@@ -60,6 +60,10 @@ pub struct Settings {
     pub notification_level: crate::api::NotificationSetting,
     pub theme_mode: ThemeMode,
     pub theme_accent: ThemeAccent,
+    /// None follows the theme accent; Some is an independent local trail color.
+    pub trail_color: Option<ThemeColor>,
+    pub pointer_style: PointerStyle,
+    pub pointer_size: PointerSize,
     pub show_status_icon: bool,
     pub confirm_quit: bool,
     pub paste_as_file: bool,
@@ -108,6 +112,9 @@ impl Default for Settings {
             notification_level: Default::default(),
             theme_mode: ThemeMode::System,
             theme_accent: ThemeAccent::default(),
+            trail_color: None,
+            pointer_style: PointerStyle::default(),
+            pointer_size: PointerSize::default(),
             show_status_icon: true,
             confirm_quit: true,
             paste_as_file: true,
@@ -913,6 +920,82 @@ mod tests {
             raw.as_object_mut().unwrap().remove("local");
             assert!(!raw.to_string().contains("take_foreground_on_leave"));
         }
+    }
+
+    #[test]
+    fn cursor_trail_always_defaults_to_circle_and_persists_only_on_its_source() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = AgentConfig::load_from(dir.path()).unwrap();
+        config.save().unwrap();
+        let mut old = stored(dir.path());
+        old["local"]["routing"] = serde_json::json!({"forward_injected_input":true});
+        std::fs::write(config.settings_path(), serde_json::to_vec(&old).unwrap()).unwrap();
+        config = AgentConfig::load_from(dir.path()).unwrap();
+        assert!(!config.settings.routing.cursor_trail_always);
+        let owner = config.owner().clone();
+        for always in [true, false] {
+            config
+                .update_local(&serde_json::json!({"routing":{"cursor_trail_always":always}}), |s| {
+                    s.routing.cursor_trail_always = always
+                })
+                .unwrap();
+            // Another preference edit must preserve the mode, including explicit false.
+            config.update(|s| s.confirm_quit = !s.confirm_quit).unwrap();
+            let reloaded = AgentConfig::load_from(dir.path()).unwrap();
+            assert_eq!(reloaded.settings.routing.cursor_trail_always, always);
+            assert!(reloaded.settings.routing.cursor_trail);
+            assert!(reloaded.settings.routing.forward_injected_input);
+            assert_eq!(
+                *reloaded.owner(),
+                owner,
+                "trigger mode never changes replicated owner options"
+            );
+            let raw = stored(dir.path());
+            assert_eq!(raw["local"]["routing"]["cursor_trail_always"], always);
+            assert_eq!(raw["device_options_cbor"], old["device_options_cbor"]);
+        }
+    }
+
+    #[test]
+    fn cursor_appearance_persists_without_changing_theme_or_replicated_options() {
+        use crate::api::{PreferencePatch, UiPreferences};
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = AgentConfig::load_from(dir.path()).unwrap();
+        let owner = config.owner().clone();
+        let theme = config.settings.theme_accent.clone();
+        assert_eq!(config.settings.trail_color, None);
+        assert_eq!(config.settings.pointer_style, PointerStyle::System);
+        assert_eq!(config.settings.pointer_size, PointerSize::Normal);
+        let patch: PreferencePatch<UiPreferences> = serde_json::from_value(serde_json::json!({
+            "trail_color":"#12aBcD", "pointer_style":"black", "pointer_size":"large"
+        }))
+        .unwrap();
+        let applied = patch.apply(&UiPreferences::from(&config.settings)).unwrap();
+        config
+            .update_local(&patch.value(), |settings| applied.apply(settings))
+            .unwrap();
+        let mut reloaded = AgentConfig::load_from(dir.path()).unwrap();
+        assert_eq!(reloaded.settings.trail_color.as_ref().unwrap().as_str(), "#12ABCD");
+        assert_eq!(reloaded.settings.pointer_style, PointerStyle::Black);
+        assert_eq!(reloaded.settings.pointer_size, PointerSize::Large);
+        assert_eq!(reloaded.settings.theme_accent, theme);
+        assert_eq!(*reloaded.owner(), owner);
+        reloaded.update(|settings| settings.confirm_quit = false).unwrap();
+        assert_eq!(stored(dir.path())["local"]["trail_color"], "#12ABCD");
+        let reset: PreferencePatch<UiPreferences> = serde_json::from_value(serde_json::json!({
+            "trail_color":null, "pointer_style":"system", "pointer_size":"normal"
+        }))
+        .unwrap();
+        let applied = reset.apply(&UiPreferences::from(&reloaded.settings)).unwrap();
+        reloaded
+            .update_local(&reset.value(), |settings| applied.apply(settings))
+            .unwrap();
+        let restored = AgentConfig::load_from(dir.path()).unwrap();
+        assert_eq!(restored.settings.trail_color, None);
+        assert_eq!(restored.settings.pointer_style, PointerStyle::System);
+        assert_eq!(restored.settings.pointer_size, PointerSize::Normal);
+        assert_eq!(*restored.owner(), owner);
+        assert_eq!(stored(dir.path())["local"]["trail_color"], serde_json::Value::Null);
     }
 
     #[test]

@@ -18,13 +18,15 @@ impl Node {
         // Read while holding the settings lock through application so concurrent
         // saves/appearance callbacks cannot leave an older accent on the renderer.
         let config = lock(&self.inner.config);
-        let rgb = config
-            .settings
-            .theme_accent
-            .resolved(
-                config.settings.theme_mode,
-                self.inner.system_dark.load(Ordering::Acquire),
-            )
+        let settings = &config.settings;
+        let rgb = settings
+            .trail_color
+            .as_ref()
+            .unwrap_or_else(|| {
+                settings
+                    .theme_accent
+                    .resolved(settings.theme_mode, self.inner.system_dark.load(Ordering::Acquire))
+            })
             .rgb();
         if let Some(trail) = self.inner.cursor_trail.get() {
             trail.set_trail_color(rgb);
@@ -128,5 +130,23 @@ mod tests {
                 .rgb(),
             [18, 52, 86]
         );
+        let mut prefs = node.ui_preferences().unwrap();
+        prefs.trail_color = Some(ThemeColor::try_from("#42DDAA".to_owned()).unwrap());
+        node.set_ui_preferences(prefs.clone().into()).unwrap();
+        check([66, 221, 170]);
+        node.system_appearance_changed(false);
+        check([66, 221, 170]);
+        assert_eq!(
+            AgentConfig::load_from(home.path())
+                .unwrap()
+                .settings
+                .trail_color
+                .unwrap()
+                .rgb(),
+            [66, 221, 170]
+        );
+        prefs.trail_color = None;
+        node.set_ui_preferences(prefs.into()).unwrap();
+        check(colors.light.rgb());
     }
 }

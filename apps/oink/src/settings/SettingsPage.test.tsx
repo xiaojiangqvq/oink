@@ -21,8 +21,51 @@ beforeAll(() => {
 afterEach(() => { toast.dismiss(); cleanup(); vi.restoreAllMocks(); agent.adopt('overview', null); agent.adopt('receivedFiles',null); });
 const prefs = { prefs: DEFAULT_PREFS, set() {}, canEdit: () => true } as unknown as PrefsApi;
 const perms: Record<PermissionId, PermState> = { accessibility: 'granted', input: 'granted', network: 'not_required', files: 'granted', audio: 'granted' };
-const view = (platform: 'mac' | 'win' = 'mac') => <OinkProvider defaultMotion="reduced"><SettingsPage open platform={platform} api={prefs} capsIme={false} query="" jump={null} onActive={() => {}} version="test" upgrade={{available:false,next:''}} perms={perms} onGrant={() => {}} onLog={() => {}} onAbout={() => {}} onBlocklist={() => {}}/><Toaster/></OinkProvider>;
+const view = (platform: 'mac' | 'win' = 'mac', preferences = prefs) => <OinkProvider defaultMotion="reduced"><SettingsPage open platform={platform} api={preferences} capsIme={false} query="" jump={null} onActive={() => {}} version="test" upgrade={{available:false,next:''}} perms={perms} onGrant={() => {}} onLog={() => {}} onAbout={() => {}} onBlocklist={() => {}}/><Toaster/></OinkProvider>;
 const usage = (total: number) => ({ categories: [], total_bytes: total, incomplete: true });
+
+it.each(['mac','win'] as const)('keeps the trail master switch and offers both trigger modes on %s', async platform=>{
+  setLanguage('zh-Hans');
+  const set=vi.fn();
+  const preferences={...prefs,set,prefs:{...DEFAULT_PREFS}};
+  const {container,rerender}=render(view(platform,preferences));
+  const master=container.querySelector<HTMLElement>('[data-item="pointerTrail"]')!;
+  const mode=container.querySelector<HTMLElement>('[data-item="pointerTrailAlways"]')!;
+  expect(within(master).getByRole('switch',{name:'显示指针尾迹'})).toBeTruthy();
+  expect(mode.dataset.parent).toBe('pointerTrail');
+  const select=within(mode).getByRole('combobox',{name:'触发方式'}) as HTMLButtonElement;
+  expect(select.disabled).toBe(false);
+  expect(select.textContent).toContain('快速画圈（原版）');
+  fireEvent.click(select);
+  expect(await within(document.body).findByRole('option',{name:'快速画圈（原版）'})).toBeTruthy();
+  fireEvent.click(await within(document.body).findByRole('option',{name:'移动即显示'}));
+  expect(set).toHaveBeenCalledExactlyOnceWith('pointerTrailAlways',true);
+  rerender(view(platform,{...preferences,prefs:{...preferences.prefs,pointerTrailAlways:true}}));
+  expect(select.textContent).toContain('移动即显示');
+  rerender(view(platform,{...preferences,prefs:{...preferences.prefs,pointerTrail:false,pointerTrailAlways:true}}));
+  expect(select.disabled).toBe(true);
+  expect(select.textContent).toContain('移动即显示');
+});
+
+it.each(['快速画圈','移动即显示'])('keeps the trail master and trigger row together when searching for %s',query=>{
+  setLanguage('zh-Hans');
+  const found=searchSections('win',query).get('input');
+  expect(found!=='all' && found?.has('pointerTrail')).toBe(true);
+  expect(found!=='all' && found?.has('pointerTrailAlways')).toBe(true);
+});
+
+it.each(['mac','win'] as const)('places trail color under the master switch and limits Windows arrow controls to %s',platform=>{
+  setLanguage('zh-Hans');
+  const {container}=render(view(platform));
+  expect(container.querySelector<HTMLElement>('[data-item="trailColor"]')?.dataset.parent).toBe('pointerTrail');
+  expect(!!container.querySelector('[data-item="pointerStyle"]')).toBe(platform==='win');
+  expect(!!container.querySelector('[data-item="pointerSize"]')).toBe(platform==='win');
+  if(platform==='win') {
+    const row=container.querySelector<HTMLElement>('[data-item="pointerStyle"]')!;
+    expect(row.textContent).toContain('对其他软件也生效');
+    expect(container.querySelector<HTMLElement>('[data-item="pointerSize"]')?.dataset.parent).toBe('pointerStyle');
+  }
+});
 
 it.each(['en', 'zh-Hans', 'ja', 'ko'] as const)('shows cached files without an incomplete note or an open-folder button in %s', async language => {
   setLanguage(language);

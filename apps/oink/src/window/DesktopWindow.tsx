@@ -161,7 +161,7 @@ export const DesktopWindow = forwardRef<HTMLDivElement, DesktopWindowProps>(func
                 </span>);
         })}
             
-            {version && <span className="win__side-ver" aria-label={tr('版本 {0}', version)}>v{version}</span>}
+            {version && <span className="win__side-ver" aria-label={`${tr('版本 {0}', version)} · ${tr('尾迹增强版 · 第三方修改版')}`} title={tr('尾迹增强版 · 第三方修改版')}><span>v{version}</span><span className="win__side-edition">{tr('尾迹增强版')}</span></span>}
           </div>
         </aside>
         <div className="win__content">{children}</div>

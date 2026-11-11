@@ -68,6 +68,17 @@ impl Node {
             }
             self.apply_trail_appearance();
             self.watch_trail_appearance();
+            #[cfg(windows)]
+            {
+                let settings = self.settings();
+                if let Err(error) = crate::pointer_style::apply(
+                    &self.inner.data_dir,
+                    settings.pointer_style,
+                    settings.pointer_size,
+                ) {
+                    tracing::warn!(%error, "could not apply saved Windows arrow appearance");
+                }
+            }
         }
         // Registration precedes discovery and every possible ready notification.
         // A profile without a component leaves its stream kinds unregistered:

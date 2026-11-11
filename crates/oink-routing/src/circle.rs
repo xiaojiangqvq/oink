@@ -18,6 +18,9 @@
 //!   未满时路程已超过 `2π × max_radius`。
 //!
 //! 「画得够快」只看角速度（运动方向的转动速度），与屏幕尺寸、指针速度设置无关。
+//!
+//! Local customization: [`CircleDetector::any_motion`] reuses the same idle
+//! timeout while starting the trail on every finite, nonzero pointer movement.
 
 use std::collections::VecDeque;
 use std::f64::consts::{PI, TAU};
@@ -189,6 +192,20 @@ impl CircleDetector {
     pub fn tick(&mut self, now: u64) -> bool {
         if self.last_motion.is_some_and(|t| now > t + self.gap_us()) {
             self.clear(RunEnd::Pause);
+        }
+        self.engaged
+    }
+
+    /// Start immediately on movement, retaining the normal pause/reset lifecycle.
+    /// Unlike circle recognition, this path has no distance or speed threshold.
+    pub(crate) fn any_motion(&mut self, dx: f64, dy: f64, now: u64) -> bool {
+        self.tick(now);
+        if dx.is_finite() && dy.is_finite() && (dx != 0.0 || dy != 0.0) {
+            if !self.engaged {
+                tracing::debug!("cursor trail motion engaged");
+            }
+            self.last_motion = Some(now);
+            self.engaged = true;
         }
         self.engaged
     }
@@ -372,6 +389,51 @@ mod tests {
     use super::*;
 
     const HZ: f64 = 125.0;
+
+    #[test]
+    fn any_motion_starts_on_tiny_straight_or_reversing_movement() {
+        let mut d = CircleDetector::default();
+        for (i, (dx, dy)) in [(f64::MIN_POSITIVE, 0.), (-0.001, 0.), (0., 0.001)]
+            .into_iter()
+            .enumerate()
+        {
+            let now = i as u64 * 100_000;
+            assert!(d.any_motion(dx, dy, now));
+            assert_eq!(d.deadline(), Some(now + 120_001));
+        }
+        assert_eq!(d.turns(), 0., "no circle recognition needed");
+    }
+
+    #[test]
+    fn any_motion_restarts_after_idle_with_or_without_a_timer_tick() {
+        let mut d = CircleDetector::default();
+        assert!(d.any_motion(1., 0., 0));
+        assert!(d.tick(120_000));
+        assert!(!d.tick(120_001));
+        assert_eq!(d.deadline(), None);
+        assert!(d.any_motion(1., 0., 200_000));
+        assert!(d.any_motion(0., -1., 400_000));
+        assert_eq!(d.deadline(), Some(520_001));
+        d.reset();
+        assert!(!d.engaged());
+        assert_eq!(d.deadline(), None);
+        assert!(d.any_motion(1., 0., 600_000));
+    }
+
+    #[test]
+    fn any_motion_zero_and_invalid_samples_neither_start_nor_extend_trails() {
+        let invalid = [(0., -0.), (f64::NAN, 1.), (1., f64::INFINITY), (f64::NEG_INFINITY, 1.)];
+        for (dx, dy) in invalid {
+            let mut d = CircleDetector::default();
+            assert!(!d.any_motion(dx, dy, 0));
+            assert_eq!(d.deadline(), None);
+            assert!(d.any_motion(1., 0., 1));
+            assert!(d.any_motion(dx, dy, 100_000));
+            assert_eq!(d.deadline(), Some(120_002));
+            assert!(!d.any_motion(dx, dy, 120_002));
+            assert_eq!(d.deadline(), None);
+        }
+    }
 
     /// 按轨迹函数（秒 → plane 位置）以 `HZ` 采样，逐个喂给识别器；返回每个采样时刻（秒）与是否触发。
     fn run(det: &mut CircleDetector, t0: f64, secs: f64, f: impl Fn(f64) -> (f64, f64)) -> Vec<(f64, bool)> {

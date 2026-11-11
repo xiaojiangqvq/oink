@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { usePreferences } from './model';
+import { usePreferences, type LocalPreferences } from './model';
 import type { InputTransform } from '../api/types';
 const mocks=vi.hoisted(()=>({state:{} as Record<string,unknown>,call:vi.fn(),input:vi.fn(),audio:vi.fn(),clipboard:vi.fn(),login:vi.fn(),group:vi.fn(),transform:vi.fn(),listeners:new Set<()=>void>()}));
 vi.mock('../api/store',async()=>{
@@ -19,6 +19,81 @@ beforeEach(()=>{
   mocks.call.mockResolvedValue(mocks.state.localPreferences);
 });
 afterEach(cleanup);
+it('saves and reloads local trail and arrow appearance independently of the theme and input modes', async()=>{
+  mocks.call.mockImplementation(async(_method,{settings})=>({...mocks.state.localPreferences as object,...settings}));
+  const appearancePatches: Partial<LocalPreferences>[]=[
+    {trail_color:'#12ABEF'}, {pointer_style:'black'}, {pointer_size:'extra_large'}, {trail_color:null}, {pointer_style:'system'},
+  ];
+  let expected: Partial<LocalPreferences>={};
+  for(const patch of appearancePatches) {
+    const mounted=renderHook(usePreferences);
+    expect(mounted.result.current.canEdit('trailColor')).toBe(true);
+    expect(mounted.result.current.canEdit('pointerStyle')).toBe(true);
+    expect(mounted.result.current.canEdit('pointerSize')).toBe(true);
+    mocks.call.mockClear();
+    await act(async()=>mounted.result.current.saveLocal(patch));
+    expect(mocks.call).toHaveBeenCalledExactlyOnceWith('set_ui_preferences',{settings:patch});
+    expected={...expected,...patch};
+    mounted.unmount();
+    const reloaded=renderHook(usePreferences);
+    expect(reloaded.result.current.local).toEqual(expect.objectContaining(expected));
+    expect(reloaded.result.current.local?.theme_accent).toEqual({light:'#2E7BFF',dark:'#5599FF'});
+    expect(reloaded.result.current.prefs.pointerTrailAlways).toBe(false);
+    reloaded.unmount();
+  }
+  expect(mocks.input).not.toHaveBeenCalled();
+  expect(mocks.transform).not.toHaveBeenCalled();
+  expect(localStorage.getItem('oink:prefs')).toBeNull();
+  mocks.state={...mocks.state,localPreferences:null};
+  const unavailable=renderHook(usePreferences);
+  for(const key of ['trailColor','pointerStyle','pointerSize'])expect(unavailable.result.current.canEdit(key)).toBe(false);
+});
+
+it('defaults legacy trail settings to quick circles and persists trigger mode independently of the master switch', async()=>{
+  mocks.input.mockImplementation(async patch=>{
+    mocks.state={...mocks.state,input:{...(mocks.state.input as object),...patch}};
+    mocks.listeners.forEach(listener=>listener());
+  });
+  const mounted=renderHook(usePreferences);
+  expect(mounted.result.current.prefs.pointerTrailAlways).toBe(false);
+  expect(mounted.result.current.canEdit('pointerTrailAlways')).toBe(true);
+  await act(async()=>mounted.result.current.set('pointerTrailAlways',true));
+  expect(mocks.input).toHaveBeenCalledExactlyOnceWith({cursor_trail_always:true});
+  expect(mounted.result.current.prefs.pointerTrail).toBe(false);
+  mocks.input.mockClear();
+  await act(async()=>mounted.result.current.set('pointerTrail',true));
+  expect(mocks.input).toHaveBeenCalledExactlyOnceWith({cursor_trail:true});
+  mocks.input.mockClear();
+  await act(async()=>mounted.result.current.set('pointerTrail',false));
+  expect(mocks.input).toHaveBeenCalledExactlyOnceWith({cursor_trail:false});
+  expect(mounted.result.current.prefs.pointerTrailAlways).toBe(true);
+  mounted.unmount();
+  const reloaded=renderHook(usePreferences);
+  expect(reloaded.result.current.prefs.pointerTrailAlways).toBe(true);
+  expect(reloaded.result.current.prefs.pointerTrail).toBe(false);
+  mocks.input.mockClear();
+  await act(async()=>reloaded.result.current.set('pointerTrailAlways',false));
+  expect(mocks.input).toHaveBeenCalledExactlyOnceWith({cursor_trail_always:false});
+  expect(reloaded.result.current.prefs.pointerTrail).toBe(false);
+  expect(mocks.transform).not.toHaveBeenCalled();
+  expect(mocks.call).not.toHaveBeenCalled();
+  expect(localStorage.getItem('oink:prefs')).toBeNull();
+  reloaded.unmount();
+  mocks.state={...mocks.state,input:null};
+  const unavailable=renderHook(usePreferences);
+  expect(unavailable.result.current.canEdit('pointerTrailAlways')).toBe(false);
+});
+
+it.each([false,true])('preserves trail trigger mode=%s when another input preference changes', async enabled=>{
+  mocks.state.input={...(mocks.state.input as object),cursor_trail:true,cursor_trail_always:enabled};
+  const {result}=renderHook(usePreferences);
+  expect(result.current.prefs.pointerTrailAlways).toBe(enabled);
+  await act(async()=>result.current.set('keepAwake',false));
+  expect(mocks.input).toHaveBeenCalledExactlyOnceWith({wake_displays_on_input:false});
+  expect(result.current.prefs.pointerTrailAlways).toBe(enabled);
+  expect(result.current.prefs.pointerTrail).toBe(true);
+});
+
 it.each(['macos','windows'])('persists a separate custom map through preset changes and a fresh webview on %s',async platform=>{
   const mac=platform==='macos',target=mac?'windows':'macos';
   const keyboard:InputTransform['windows']['keyboard']={preset:'custom',table:[{from:0x700e0,to:0},{from:0x700e1,to:0x700e3},{from:0x700e2,to:0x700e0},{from:0x700e3,to:0x700e6},...(mac?[{from:0xff0003,to:0}]:[])],caps_tap_hold:{tap:0,hold:0}};

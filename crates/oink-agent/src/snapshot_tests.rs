@@ -864,17 +864,38 @@ fn trail_preferences_remain_local_and_survive_restart() {
             }
             settings.cursor_trail_duration_ms = 10_000;
             settings.cursor_trail = false;
+            settings.cursor_trail_always = true;
             input_preferences(&a, settings).await;
             assert!(b.input_settings().unwrap().cursor_trail);
+            assert!(!b.input_settings().unwrap().cursor_trail_always);
             assert_eq!(b.input_settings().unwrap().cursor_trail_duration_ms, 270);
+            assert!(
+                a.inner.input_settings.load().cursor_trail_always,
+                "live routing snapshot"
+            );
+            let node = a.clone();
+            tokio::task::spawn_blocking(move || {
+                node.set_input_settings(
+                    serde_json::from_value(serde_json::json!({"forward_wheel_by_lines":false})).unwrap(),
+                )
+            })
+            .await
+            .unwrap()
+            .unwrap();
+            assert!(
+                a.input_settings().unwrap().cursor_trail_always,
+                "omitted mode is not an edit"
+            );
             assert_eq!(a.layout().1, version);
             let local = crate::config::AgentConfig::load_from(&configs[0].data_dir).unwrap();
             assert!(!local.settings.routing.cursor_trail);
+            assert!(local.settings.routing.cursor_trail_always);
             assert_eq!(local.settings.cursor_trail_duration_ms, 10_000);
             a.shutdown().await;
             b.shutdown().await;
             let restarted = start_with_clip(&configs[0], &Displays::new("a"), None).await;
             assert!(!restarted.input_settings().unwrap().cursor_trail);
+            assert!(restarted.input_settings().unwrap().cursor_trail_always);
             assert_eq!(restarted.input_settings().unwrap().cursor_trail_duration_ms, 10_000);
             restarted.shutdown().await;
         },

@@ -1,0 +1,38 @@
+Pointer Trail Enhanced — third-party modification of Oink v0.3.4
+
+The installer replaces only oink.exe, oink-agent.exe and their build/report
+metadata in an existing upstream Windows x64 0.3.4 build 108 installation.
+It leaves the original MSI receipt, service broker and updater unchanged.
+It does not bundle user profiles, pairing keys or private backups.
+
+Build prerequisites: the Rust toolchain pinned in rust-toolchain.toml, Node/npm
+versions required by apps/oink/package.json, Python 3.11+, Visual Studio 2022
+C++ tools, CMake, cargo-about 0.9.2 and Windows .NET Framework 4 csc.exe.
+Use a short CARGO_TARGET_DIR outside the source (for example C:\oink-target)
+to avoid native CMake/MSBuild path-length limits. Put prerequisites on PATH.
+
+From a Git checkout, add all new source files to Git before building. From the
+source root, with output directories outside it:
+  python build-support/provenance.py --inventory ..\source-inventory.json
+  python build-support/build.py --target x86_64-pc-windows-msvc --source-tree-sha256 HASH_FROM_PREVIOUS_COMMAND --build 108 --symbols-output ..\private-symbols
+  python packaging/trail-installer/prepare_bundle.py --binaries C:\oink-target\x86_64-pc-windows-msvc\release --output ..\trail-bundle
+  python packaging/trail-installer/build.py --bundle ..\trail-bundle --output ..\trail-installer
+  python packaging/trail-installer/verify_installer.py --installer ..\trail-installer\PointerTrail-Setup.exe --output ..\trail-smoke
+
+The bundle builder verifies the current source hash and release binary hashes.
+It packages all product source files, lockfiles, notices and installer source.
+The source archive also includes a sibling source-inventory.json for portable
+file-mode verification, plus a sibling source-changes.patch. When rebuilding
+from that archive, skip the first command above: retain the bundled inventory,
+pass it as --source-inventory to build-support/build.py, and use its
+source_tree_sha256. prepare_bundle.py automatically reads these two sibling
+files when .git is absent (or accepts explicit --source-inventory/--source-patch).
+No command here publishes, installs, changes cursor settings, or uploads symbols.
+
+The build and smoke verification do not replace live testing. Verify upgrade
+from original and earlier modified installs, settings preservation, both trail
+modes, custom color, Windows arrow restoration and paired-device operation.
+
+The installer is unsigned. Its administrator worker validates its own embedded
+archive and extracts helper scripts into a protected Program Files directory.
+The current user's data and registry settings are never shipped in this package.

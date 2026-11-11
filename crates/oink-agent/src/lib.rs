@@ -32,6 +32,8 @@ pub mod logs;
 
 pub mod node;
 pub mod paste_file;
+#[cfg(windows)]
+mod pointer_style;
 pub mod prelogin;
 mod projection;
 pub mod remote;

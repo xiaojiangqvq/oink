@@ -1,3 +1,13 @@
+# Pointer Trail Enhanced — third-party modification
+
+This fork is based on [Oink v0.3.4](https://github.com/oinkvm/oink/tree/v0.3.4). It adds a choice between the original circle gesture and any mouse movement, independent trail colors, and Windows arrow styles and sizes. It is a modified distribution, not an official Oink release or an endorsement by its authors. Original attribution and documentation follow below.
+
+The overwrite installer requires an existing **Windows x64 Oink 0.3.4, build 108** installation. It preserves pairing, layout, and preferences, supports upgrading the earlier personal movement-trail patch, and provides a restore option. Arrow preferences affect the local Windows user; select System in the enhanced app to restore the previous arrow before reverting the application. Other official versions and fresh installations are not supported by this patch installer.
+
+See [Chinese usage instructions](README.zh-CN.md) and [build instructions](packaging/trail-installer/BUILDING.txt). The installer includes matching complete source and license notices. The original circle mode remains the default for an unmodified installation. Trail mode is local to the input source; color and Windows arrow preferences are local to each display computer.
+
+---
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/assets/banner-dark.png">

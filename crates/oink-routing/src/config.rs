@@ -123,10 +123,13 @@ pub struct RoutingSettings {
     pub edge_resistance_corner_fraction: f64,
     /// Platform damping profile and optional manual edge segments.
     pub damping: crate::damping::DampingConfig,
-    /// Show a cursor trail after a quick circle gesture; enabled by default.
+    /// Enable the cursor trail; enabled by default.
     /// Runtime projection of the local owner preference.
     #[serde(skip)]
     pub cursor_trail: bool,
+    /// Physical-source local trigger preference. False keeps the original circle
+    /// gesture; true starts on every movement. Never replicated to peers.
+    pub cursor_trail_always: bool,
     #[serde(skip)]
     pub cursor_trail_duration_ms: u32,
     #[serde(skip)]
@@ -165,6 +168,7 @@ impl Default for RoutingSettings {
             edge_resistance_corner_fraction: 0.005,
             damping: Default::default(),
             cursor_trail: true,
+            cursor_trail_always: false,
             cursor_trail_duration_ms: oink_display::layout::DEFAULT_CURSOR_TRAIL_DURATION_MS,
             event_frequency: oink_display::layout::EventFrequency::default(),
         }

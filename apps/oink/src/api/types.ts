@@ -214,6 +214,8 @@ export interface InputSettings {
   wake_displays_on_input: boolean;
 
   cursor_trail: boolean;
+  /** False (including older settings) keeps the original quick-circle trigger. */
+  cursor_trail_always?: boolean;
   cursor_trail_duration_ms: number;
   /** Group setting, stored and shared with the layout. */
   gap_travel: boolean;

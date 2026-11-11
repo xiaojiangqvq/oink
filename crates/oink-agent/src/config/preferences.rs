@@ -112,6 +112,26 @@ pub enum ThemeMode {
     Dark,
 }
 
+/// Local Windows pointer appearance. System retains the user's saved cursor scheme.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PointerStyle {
+    #[default]
+    System,
+    White,
+    Black,
+    Inverted,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PointerSize {
+    #[default]
+    Normal,
+    Large,
+    ExtraLarge,
+}
+
 /// Opaque sRGB, serialized as #RRGGBB. Alpha is deliberately not configurable.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]

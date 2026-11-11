@@ -57,6 +57,7 @@ export interface Prefs {
     forwardInjectedInput: boolean;
     takeForegroundOnLeave: boolean;
     pointerTrail: boolean;
+    pointerTrailAlways: boolean;
     clipReceive: boolean;
     clipSend: boolean;
     removeDsStore: boolean;
@@ -94,6 +95,7 @@ export const DEFAULT_PREFS: Prefs = {
     forwardInjectedInput: true,
     takeForegroundOnLeave: false,
     pointerTrail: true,
+    pointerTrailAlways: false,
     clipReceive: true,
     clipSend: true,
     removeDsStore: true,

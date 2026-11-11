@@ -1057,9 +1057,13 @@ pub struct InputSettings {
     /// Respond to group user activity by waking displays.
     #[serde(default = "default_return_pointer_on_display_sleep")]
     pub wake_displays_on_input: bool,
-    /// Group-wide circle gesture / trail switch, persisted and synchronized with LayoutSettings.
+    /// Local owner's cursor-trail enable switch.
     #[serde(default = "default_true")]
     pub cursor_trail: bool,
+    /// Physical-source local trigger mode: false = quick circle, true = every movement.
+    /// Omitted by older clients; defaults to the original circle gesture.
+    #[serde(default)]
+    pub cursor_trail_always: bool,
     /// Group-wide ribbon-point lifetime (100–60000 ms), synchronized with LayoutSettings.
     #[serde(
         default = "oink_display::layout::default_cursor_trail_duration_ms",
@@ -3174,6 +3178,7 @@ fn test_input_settings() -> InputSettings {
         return_pointer_on_display_sleep: true,
         wake_displays_on_input: true,
         cursor_trail: true,
+        cursor_trail_always: false,
         cursor_trail_duration_ms: 270,
         gap_travel: false,
     }
@@ -3181,6 +3186,40 @@ fn test_input_settings() -> InputSettings {
 #[cfg(test)]
 mod input_validation_tests {
     use super::*;
+    #[test]
+    fn cursor_trail_always_defaults_to_circle_and_partial_edits_preserve_the_choice() {
+        let mut legacy = serde_json::to_value(test_input_settings()).unwrap();
+        legacy.as_object_mut().unwrap().remove("cursor_trail_always");
+        let current: InputSettings = serde_json::from_value(legacy).unwrap();
+        assert!(!current.cursor_trail_always);
+        let mode: PreferencePatch<InputSettings> =
+            serde_json::from_value(serde_json::json!({"cursor_trail_always":true})).unwrap();
+        let current = mode.apply(&current).unwrap();
+        assert!(current.cursor_trail_always && current.cursor_trail);
+        let master: PreferencePatch<InputSettings> =
+            serde_json::from_value(serde_json::json!({"cursor_trail":false})).unwrap();
+        let current = master.apply(&current).unwrap();
+        assert!(current.cursor_trail_always);
+        assert!(!current.cursor_trail);
+        for value in [
+            serde_json::json!(null),
+            serde_json::json!("always"),
+            serde_json::json!(1),
+        ] {
+            let invalid: PreferencePatch<InputSettings> =
+                serde_json::from_value(serde_json::json!({"cursor_trail_always":value})).unwrap();
+            assert!(invalid.apply(&current).is_err());
+        }
+        assert!(
+            serde_json::from_value::<Request>(serde_json::json!({
+                "method":"set_input_settings",
+                "params":{"settings":{"cursor_trail_always":true}, "device":"00".repeat(32)}
+            }))
+            .is_err(),
+            "a local preference command must reject a purported remote target"
+        );
+    }
+
     #[test]
     fn old_input_settings_default_foreground_capture_off() {
         let mut value = serde_json::to_value(test_input_settings()).unwrap();
