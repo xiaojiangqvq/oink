@@ -1,7 +1,7 @@
 Pointer Trail Enhanced — third-party modification of Oink v0.3.4
-Release display version: 0.3.4-inhouse.109; Windows release build: 109
+Release display version: 0.3.4-inhouse.110; Windows release build: 110
 
-PointerTrail-Setup.exe is a complete Windows x64 installer. It bundles the
+PointerTrail-Setup.exe uses the standard NSIS Modern UI wizard. It bundles the
 full application MSI, including its service and other product components,
 and Microsoft's official offline WebView2 Runtime installer. It supports
 fresh installation without the original application and direct upgrade from
@@ -9,23 +9,27 @@ Oink 0.3.4 build 108 or the earlier personal movement-trail patch. The runtime
 is installed only when missing. Newer upstream installations are outside this
 release's supported overwrite scope.
 
-Do not uninstall before upgrading: normal Windows uninstallation removes
-local application data. The full installer upgrades in place and retains
-pairing, layout, preferences, and existing login-start settings. It has no
-old patch-restore button. A fresh installation can enable login startup from
-the app's settings; the elevated installer does not set a user's HKCU startup
-entry. The fork disables the official Windows update feed; manual upgrades
-are distributed at https://github.com/xiaojiangqvq/oink/releases.
+When Oink is detected, the wizard offers Overwrite install (default, keeping
+pairing/layout/preferences), Uninstall, and Fresh install (uninstall followed
+by installation). Uninstall and Fresh install remove local application data.
+Without an existing installation, it installs directly. Installation is
+machine-wide because Oink includes a Windows service. Existing login-start
+preferences remain during an overwrite; fresh users can enable it in the app.
+The fork disables the official Windows update feed; manual upgrades are at
+https://github.com/xiaojiangqvq/oink/releases.
 
 Build prerequisites
 
 Use Windows x64 with the Rust toolchain pinned in rust-toolchain.toml,
 Node 24.14.1 and npm 11.11.0 (root package.json), Python 3.11+, Visual Studio
 2022 C++ tools, CMake, cargo-about 0.9.2, a .NET runtime capable of running the
-pinned WiX 5.0.2 tools, and Windows .NET Framework 4 csc.exe. Put these tools on
-PATH. The MSI builder downloads hash-pinned WiX packages into --tool-cache;
-it does not globally install WiX. Run npm ci at the repository root to install
-the locked JavaScript dependencies.
+pinned WiX 5.0.2 tools, and 7-Zip for independent installer extraction. Put
+these tools on PATH, or supply --sevenzip to the wrapper build and verifier.
+The MSI builder downloads hash-pinned WiX packages into --tool-cache. The
+wrapper builder uses the official portable NSIS 3.13 archive pinned in
+nsis-toolchain.json, verifies its archive/compiler hashes and version, and
+extracts it into its tool cache. Neither builder installs tools globally.
+Run npm ci at the repository root for the locked JavaScript dependencies.
 
 Use a short CARGO_TARGET_DIR outside the source, for example C:\oink-target,
 to avoid native CMake/MSBuild path-length limits. Keep binaries, MSI outputs,
@@ -33,7 +37,9 @@ tool caches, symbols, bundle outputs, and installer outputs outside the source.
 Obtain MicrosoftEdgeWebView2RuntimeInstallerX64.exe from Microsoft's official
 Evergreen Standalone Installer download. The bundle builder verifies the
 approved runtime identity and hash; an arbitrary EXE is not an acceptable
-replacement. The bundle manifest records the runtime provenance.
+replacement. webview2-runtime.json records its provenance. NSIS-LICENSE.txt
+contains the upstream NSIS and Modern UI 2 license notices; WIX-LICENSE.txt
+covers the application MSI's WiX tooling.
 
 Build from a Git checkout
 
@@ -43,11 +49,11 @@ HASH is the source-tree SHA256 printed by the first command. Do not change
 the source between inventory creation, binary compilation, and packaging.
 
   python build-support/provenance.py --inventory ..\source-inventory.json
-  python build-support/build.py --target x86_64-pc-windows-msvc --source-tree-sha256 HASH --source-commit FULL_COMMIT --build 109 --symbols-output ..\private-symbols
-  python build-support/package_notes.py --build 109 --source-commit FULL_COMMIT --output-root ..\release-history --output ..\embedded-update-notes.json
-  python packaging/windows/build.py --binaries C:\oink-target\x86_64-pc-windows-msvc\release --output ..\full-msi --tool-cache ..\wix-cache --build 109 --source-commit FULL_COMMIT --source-tree-sha256 HASH --update-notes-file ..\embedded-update-notes.json
+  python build-support/build.py --target x86_64-pc-windows-msvc --source-tree-sha256 HASH --source-commit FULL_COMMIT --build 110 --symbols-output ..\private-symbols
+  python build-support/package_notes.py --build 110 --source-commit FULL_COMMIT --output-root ..\release-history --output ..\embedded-update-notes.json
+  python packaging/windows/build.py --binaries C:\oink-target\x86_64-pc-windows-msvc\release --output ..\full-msi --tool-cache ..\wix-cache --build 110 --source-commit FULL_COMMIT --source-tree-sha256 HASH --update-notes-file ..\embedded-update-notes.json
   python packaging/trail-installer/prepare_bundle.py --package ..\full-msi --webview2-runtime ..\runtime\MicrosoftEdgeWebView2RuntimeInstallerX64.exe --output ..\trail-bundle
-  python packaging/trail-installer/build.py --bundle ..\trail-bundle --output ..\trail-installer
+  python packaging/trail-installer/build.py --bundle ..\trail-bundle --output ..\trail-installer --tool-cache ..\nsis-cache
   python packaging/trail-installer/verify_installer.py --installer ..\trail-installer\PointerTrail-Setup.exe --output ..\trail-smoke
 
 package_notes.py generates valid in-house notes. Before packaging, review and
@@ -55,7 +61,7 @@ replace its notes text with the actual changes for the release; retain schema,
 kind, build, source_commit, and at least an English fallback. This file is
 embedded in the MSI. Use the same commit, build number, and source-tree hash
 throughout. The base Cargo/npm version remains 0.3.4; --source-commit plus
---build 109 produces the supported display label 0.3.4-inhouse.109.
+--build 110 produces the supported display label 0.3.4-inhouse.110.
 
 The MSI builder verifies the exact full binary provenance and decompiles the
 MSI for validation. The bundle builder checks source and package hashes and
@@ -78,13 +84,19 @@ prepared, matching --update-notes-file.
 
 Installation behavior and verification limits
 
-The unsigned EXE's administrator worker validates its embedded archive and
-extracts it into a protected, unique ProgramData directory. It invokes the
-full MSI directly, without holding the updater maintenance lock. After a
-successful upgrade, old personal patch artifacts can be archived outside the
-installation directory. User data and private backups are never bundled.
-The initiating unelevated process handles migration of the old movement mode
-only when that setting is absent; it does not overwrite an explicit choice.
+The standard wizard requests administrator rights and uses NSIS's protected
+temporary plugin directory for its embedded full MSI and missing runtime.
+It invokes MSI quietly, without a second MSI wizard or an external maintenance
+lock. Logs remain in a protected C:\ProgramData\Oink-Setup-{GUID} directory
+(install.log/uninstall.log). On completion, users open Oink from the Start menu;
+the elevated installer does not launch the application. If clean removal needs
+a reboot (MSI 3010), installation stops and asks for a reboot before rerunning.
+
+The wrapper does not move or restore old personal-patch backups. Legacy mode
+migration occurs inside the app on first launch, only when the mode is absent;
+it does not overwrite an explicit choice. User data and private backups are
+never bundled. Complete product/installer source and notices are embedded as
+Support resources and also distributed as companion release source archives.
 
 Build and smoke verification do not replace live testing. Verify original
 build 108 and earlier personal-patch upgrades, settings retention, both trail

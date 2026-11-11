@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "version": "3.13",
+  "filename": "nsis-3.13.zip",
+  "url": "https://downloads.sourceforge.net/project/nsis/NSIS%203/3.13/nsis-3.13.zip",
+  "source_page": "https://sourceforge.net/projects/nsis/files/NSIS%203/3.13/nsis-3.13.zip/download",
+  "sha256": "ba63dffc4410ee89193e1cb5a41989991bd77c61068da17e3156d136b7b0b3d8",
+  "size": 2363925,
+  "fallback_urls": [
+    "https://github.com/egoist/mygo/releases/download/nsis-3.13/nsis-3.13.zip"
+  ],
+  "downloaded_from": "https://github.com/egoist/mygo/releases/download/nsis-3.13/nsis-3.13.zip",
+  "makensis_relative_path": "nsis-3.13/Bin/makensis.exe",
+  "makensis_sha256": "65343c225ec88393cc4453b0963caf63f763f42f48cb55736d51893ff2e29d4a",
+  "license": "NSIS COPYING and Modern UI 2 license are reproduced in NSIS-LICENSE.txt",
+  "acquired_on": "2026-11-12"
+}

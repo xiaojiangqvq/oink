@@ -346,6 +346,13 @@ impl Node {
         let data_dir = opts.net.data_dir.clone();
         let mut config = AgentConfig::load_from_with_device_name(&data_dir, opts.net.device_name.clone())
             .context("load backend settings")?;
+        #[cfg(windows)]
+        if native_services
+            && profile == Profile::User
+            && let Err(error) = config.migrate_installed_legacy_trail()
+        {
+            tracing::warn!(%error, "could not persist legacy pointer trail preference");
+        }
         if let Some(name) = &config.settings.device_name {
             opts.net.device_name = name.clone();
         }

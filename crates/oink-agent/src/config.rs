@@ -6,6 +6,8 @@ use oink_routing::RoutingSettings;
 use serde::{Deserialize, Serialize};
 
 mod deferred;
+#[cfg(any(windows, test))]
+mod legacy_trail;
 pub mod owner;
 pub mod preferences;
 mod projection;
@@ -177,11 +179,16 @@ impl AgentConfig {
                 envelope.get("schema").and_then(serde_json::Value::as_u64) == Some(1),
                 "unsupported settings schema"
             );
-            let mut local = envelope
-                .get("local")
-                .filter(|value| value.is_object())
-                .cloned()
-                .ok_or(store::StoreError::Invalid)?;
+            // Local defaults may be omitted in a sparse schema-1 envelope.
+            // An explicitly malformed local object remains an error.
+            let mut local = match envelope.get("local") {
+                Some(value) if value.is_object() => value.clone(),
+                None => {
+                    envelope["local"] = serde_json::json!({});
+                    serde_json::json!({})
+                }
+                _ => return Err(store::StoreError::Invalid.into()),
+            };
             let settings = reader.settings_in_place(&mut local);
             if reader.repaired {
                 envelope["local"] = local;

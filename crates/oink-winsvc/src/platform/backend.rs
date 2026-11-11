@@ -16,6 +16,34 @@ pub fn uiaccess() -> io::Result<bool> {
     // SAFETY: own process pseudo-handle, query-only token.
     number(token(unsafe { GetCurrentProcess() })?.0, TokenUIAccess).map(|n| n != 0)
 }
+/// Read only the fixed legacy patch marker. This is user-profile migration
+/// evidence, never an executable path or permission to modify private backups.
+pub fn legacy_trail_marker() -> io::Result<Option<Vec<u8>>> {
+    use std::io::Read;
+    let root = security::install_dir()?;
+    let read = || -> io::Result<Vec<u8>> {
+        // Keep each checked parent pinned while reading. The shared protected
+        // reader rejects reparse points, hard links and unprivileged writers.
+        let _program_files = super::update::protected::open_one(root.parent().ok_or_else(denied)?, true)?;
+        let _install = super::update::protected::open_one(&root, true)?;
+        let file = super::update::protected::open_one(&root.join("custom-trail-installed.json"), false)?;
+        let mut bytes = Vec::new();
+        const MAX_MARKER_BYTES: u64 = 65536;
+        file.take(MAX_MARKER_BYTES + 1).read_to_end(&mut bytes)?;
+        if bytes.len() as u64 > MAX_MARKER_BYTES {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "legacy trail marker too large",
+            ));
+        }
+        Ok(bytes)
+    };
+    match read() {
+        Ok(bytes) => Ok(Some(bytes)),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error),
+    }
+}
 /// Validate the UI role without rejecting the user's administrator token.
 pub fn require_interactive_ui() -> io::Result<()> {
     // SAFETY: query-only current-process pseudo handle.

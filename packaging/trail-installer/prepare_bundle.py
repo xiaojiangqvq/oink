@@ -15,8 +15,8 @@ from provenance import EXCLUDED, source_inventory, source_tree_sha256
 
 BASE_COMMIT = 'ec2fd6ae9ec8d1a55e024aed661a022a9960c337'
 UPGRADE_CODE = '4D39E4BE-6792-4CD6-B344-A5E95A270EA6'
-BUILD = 109
-VERSION = '0.3.4-inhouse.109'
+BUILD = 110
+VERSION = '0.3.4-inhouse.110'
 NOTICES = ('LICENSE', 'LICENSE-ADDITIONAL-TERMS.md', 'NOTICE',
            'THIRD_PARTY_LICENSES.md', 'third-party-licenses.json')
 
@@ -54,7 +54,7 @@ def main():
     expected_code = str(uuid.uuid5(uuid.UUID(UPGRADE_CODE), 'pointer-trail-enhanced:' + str(BUILD))).upper()
     if (release.get('schema'),release.get('source_tree_sha256'),release.get('version'),release.get('build'),
         release.get('architecture'),release.get('product_code'),release.get('upgrade_code'),release.get('msi_version')) != (
-            1,tree,VERSION,BUILD,'x64',expected_code,UPGRADE_CODE,'0.0.109'):
+            1,tree,VERSION,BUILD,'x64',expected_code,UPGRADE_CODE,'0.0.110'):
         raise ValueError('MSI release does not match the current source/fork identity/build')
     if (release.get('update_test_feed') is not None or release.get('update_test_fail_health') is not False or
             release.get('signing') != 'unsigned'):
@@ -86,7 +86,7 @@ def main():
     shutil.copy2(runtime,payload/runtime_record['filename'])
     manifest={'schema':1,'kind':'third-party-oink-full-installer','version':VERSION,'build':BUILD,
               'architecture':'x64','source_tree_sha256':tree,'source_commit':commit,
-              'product_code':expected_code,'upgrade_code':UPGRADE_CODE,'msi_version':'0.0.109',
+              'product_code':expected_code,'upgrade_code':UPGRADE_CODE,'msi_version':'0.0.110',
               'files':{'Oink.msi':digest(payload/'Oink.msi'),runtime_record['filename']:runtime_record['sha256']}}
     write_json(output/'manifest.json',manifest)
     for name in NOTICES:

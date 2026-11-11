@@ -1,14 +1,20 @@
 # Pointer Trail Enhanced — third-party modification
 
-This fork is based on [Oink v0.3.4](https://github.com/oinkvm/oink/tree/v0.3.4). Version **0.3.4-inhouse.109 (build 109)** adds a choice between the original circle gesture and any mouse movement, independent trail colors, and Windows arrow styles and sizes. It is a third-party modification, not an official Oink release or an endorsement by its authors. Original attribution and documentation follow below.
+Based on [Oink v0.3.4](https://github.com/oinkvm/oink/tree/v0.3.4), version **0.3.4-inhouse.110 (build 110)** adds selectable trail triggering, independent trail colors, and Windows arrow styles/sizes. This is a third-party modification, not an official Oink release. Original attribution and documentation remain below.
 
-Download the full **Windows x64 installer** from [this fork's Releases](https://github.com/xiaojiangqvq/oink/releases). `PointerTrail-Setup.exe` contains the complete application MSI and Microsoft's official offline WebView2 Runtime installer; it installs the runtime only when missing. A fresh installation does not require Oink to be installed first. Direct upgrades support Oink **0.3.4 build 108** and the earlier personal movement-trail patch, preserving pairing, layout, and preferences. Install it on each Windows computer. Support for overwriting newer upstream versions is not claimed; this release has no macOS package.
+Download `PointerTrail-Setup.exe` from [this fork's Releases](https://github.com/xiaojiangqvq/oink/releases) and follow the standard Windows setup wizard on each PC. The complete Windows x64 package works without an existing installation and includes Microsoft's offline WebView2 Runtime, installed only when missing.
 
-**Do not uninstall before upgrading.** Normal Windows uninstallation removes local application data. Run the new installer directly and use your computer's own keyboard and mouse while the application exits for installation. Existing login-start preferences are retained; for a fresh installation, enable login startup in the app's settings if wanted. The elevated installer does not set another user's startup registry entry.
+When Oink is already installed, choose:
 
-Find all added controls under **Settings → Keyboard & Mouse**. The original circle mode is the default for fresh or original installations; upgrading the earlier always-on personal patch retains movement mode unless a mode was already explicitly selected. Mode is local to the computer supplying physical mouse input. Trail color and Windows arrow style/size are local to the computer displaying them. Arrow changes also affect other Windows apps; text and resize cursor roles stay unchanged. Select **System** to restore the saved arrow; an external Windows arrow change is preserved.
+- **Overwrite install (default):** upgrade while keeping pairing, layout, and settings.
+- **Uninstall:** remove Oink.
+- **Fresh install:** uninstall the existing application, then install again.
 
-The fork disables the official Windows update feed. Get future manual upgrades from [this fork's Releases](https://github.com/xiaojiangqvq/oink/releases). There is no old patch-restore button in the full installer. Matching complete source, license notices, and [build instructions](packaging/trail-installer/BUILDING.txt) accompany the release. Do not share private local backups or user data. A fresh-install test on a clean Windows computer has not yet been performed. See [Chinese usage instructions](README.zh-CN.md).
+**Uninstall and Fresh install delete local application settings.** For an upgrade that keeps your setup, choose Overwrite install. Direct upgrades support original 0.3.4 build 108 and the earlier personal trail patch; newer upstream versions are outside this release's supported overwrite scope.
+
+After installation, open Oink from the Start menu. All added controls are in **Settings → Keyboard & Mouse**: original fast-circle or any-movement mode, trail color, and arrow style/size. Arrow changes affect other Windows apps; text and resize cursors stay unchanged. Select System to restore the saved arrow. Mode follows the physical mouse's computer; color and arrow preferences are local to the displaying PC. Existing login-start preferences remain; enable it in settings after a fresh install if wanted.
+
+Future upgrades are manual through [this fork's Releases](https://github.com/xiaojiangqvq/oink/releases); the official Windows update feed is disabled. Matching source and licenses accompany the release. See [build instructions](packaging/trail-installer/BUILDING.txt). No macOS package is supplied. A fresh installation on a clean Windows PC has not yet been tested.
 
 ---
 
