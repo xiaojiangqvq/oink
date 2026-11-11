@@ -1,4 +1,18 @@
-> **제3자 수정 버전 / Third-party modification:** This branch is Pointer Trail Enhanced, based on Oink v0.3.4. It is not an official release. See the [modified features and installation limits](README.md) before using the original documentation below.
+# 포인터 궤적 확장판 (제3자 수정 버전)
+
+[Oink v0.3.4](https://github.com/oinkvm/oink/tree/v0.3.4)를 기반으로 한 **0.3.4-inhouse.109(build 109)**입니다. 공식 배포판이나 원작자가 승인한 배포판이 아닙니다. 원래 프로젝트의 설명과 저작자 표시는 아래에 유지했습니다.
+
+[이 포크의 Releases](https://github.com/xiaojiangqvq/oink/releases)에서 완전한 Windows x64 설치 프로그램 `PointerTrail-Setup.exe`를 받을 수 있습니다. 전체 앱 MSI와 Microsoft 공식 WebView2 오프라인 런타임이 포함되며, 런타임이 없을 때만 설치합니다. 새 PC에 원본을 먼저 설치할 필요가 없습니다. 기존 **Oink 0.3.4 build 108**과 이전 개인용 궤적 패치는 페어링, 화면 배치, 설정을 유지하며 바로 업그레이드할 수 있습니다. 더 새로운 업스트림 버전의 덮어쓰기는 지원을 보장하지 않으며, 이번 수정판에는 macOS 패키지가 없습니다.
+
+**업그레이드 전에 제거하지 마세요.** Windows에서 일반 제거를 하면 로컬 앱 데이터가 삭제됩니다. 각 Windows PC에서 새 설치 프로그램을 바로 실행하세요. 설치 중 앱이 종료되므로 해당 PC에 직접 연결한 키보드와 마우스를 사용하세요. 기존 로그인 시 시작 설정은 유지합니다. 새로 설치한 경우 필요하면 앱 설정에서 활성화하세요. 관리자 권한 설치 과정은 사용자의 로그인 시작 레지스트리 항목을 만들지 않습니다.
+
+추가된 설정은 모두 **설정 → 키보드·마우스**에 있습니다. 기존 궤적 스위치를 유지하면서 빠르게 원을 그리는 원래 방식과 움직일 때마다 표시하는 방식을 선택할 수 있습니다. 궤적 색상은 테마를 따르거나 별도로 지정하고, Windows 화살표는 시스템, 흰색, 검은색, 반전 및 크기를 선택할 수 있습니다. 화살표 변경은 다른 Windows 앱에도 적용되며, 텍스트 입력 및 크기 조절 커서는 바뀌지 않습니다. 시스템을 선택하면 저장한 원래 화살표로 돌아가며, Windows에서 별도로 바꾼 화살표는 유지합니다.
+
+새 설치와 원본에서의 업그레이드는 원 그리기 방식이 기본값입니다. 이전 상시 궤적 패치의 이동 모드는 유지하되, 명시적으로 선택한 값은 덮어쓰지 않습니다. 모드는 물리 마우스가 연결된 PC에, 색상과 화살표는 표시하는 PC에 각각 저장됩니다. Windows 공식 업데이트 피드는 비활성화했습니다. 이후에는 [이 포크의 Releases](https://github.com/xiaojiangqvq/oink/releases)에서 수동으로 업그레이드하세요. 전체 설치 프로그램에는 예전 패치의 원본 복원 버튼이 없습니다.
+
+대응하는 전체 소스와 라이선스를 포함합니다. [빌드 안내](packaging/trail-installer/BUILDING.txt)를 참고하세요. 개인 백업과 사용자 데이터를 배포하지 마세요. 깨끗한 Windows PC에서의 새 설치 실물 테스트는 아직 완료하지 않았습니다.
+
+---
 
 <p align="center">
   <picture>
@@ -15,12 +29,12 @@ Oink는 "Oink Is Not only a KVM"의 약자로, 여러 대의 Windows와 Mac 사�
 
 ## 설치
 
-[GitHub Releases](https://github.com/oinkvm/oink/releases)에서 설치 파일과 해당 소스 코드를 받을 수 있습니다.
+[이 포크의 Releases](https://github.com/xiaojiangqvq/oink/releases)에서 Windows 수정판과 해당 소스를 받을 수 있습니다. [업스트림 Releases](https://github.com/oinkvm/oink/releases)는 원본 및 Mac 패키지를 제공합니다.
 
 지원하는 운영체제와 버전:
 
-- **Mac**: Apple 실리콘(arm64), macOS 14.2 이상. Intel(x64), macOS 14.2 이상(테스트되지 않음)
-- **Windows**: x64, Windows 10 1809(빌드 17763) 이상 또는 Windows 11. 22H2 이전 Windows 10 버전은 테스트되지 않았습니다. Windows 10 LTSC(LTSC 2019 / LTSC 2021 등)에는 WebView2 Runtime이 기본으로 포함되지 않으므로, 먼저 Microsoft Edge WebView2 Runtime(Evergreen)을 설치하세요: https://developer.microsoft.com/microsoft-edge/webview2/
+- **Mac(업스트림만)**: Apple 실리콘(arm64), macOS 14.2 이상. Intel(x64), macOS 14.2 이상(테스트되지 않음). 이번 수정판은 Windows 패키지만 제공합니다.
+- **Windows**: x64, Windows 10 1809(빌드 17763) 이상 또는 Windows 11. 22H2 이전 Windows 10 버전은 테스트되지 않았습니다. 확장판 설치 프로그램에는 공식 WebView2 오프라인 런타임이 포함되어 Windows LTSC 등 런타임이 없는 환경에 설치합니다.
 
 SmartScreen에 "Windows의 PC 보호" 메시지가 표시되면, 해당 옵션이 있을 때만 **추가 정보 → 실행**을 선택하세요. UAC에서 게시자를 알 수 없음으로 표시될 수 있습니다.
 

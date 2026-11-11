@@ -24,6 +24,21 @@ BUILDER_SPEC.loader.exec_module(B)
 
 
 class MsiContent(unittest.TestCase):
+    def test_fork_product_codes_are_stable_unique_and_never_official_codes(self):
+        upgrade = uuid.UUID(IDENTITY['windows']['upgrade_code'])
+        builds = (108, 109, 110, 65536, 2147483647)
+        actual = [B.windows_product_code(build) for build in builds]
+        self.assertEqual(len(set(actual)), len(builds))
+        for build, code in zip(builds, actual):
+            self.assertEqual(code, B.windows_product_code(build))
+            self.assertNotEqual(code, str(uuid.uuid5(upgrade, str(build))).upper())
+            self.assertEqual(uuid.UUID(code).version, 5)
+        self.assertLess(tuple(map(int, B.windows_product_version(108).split('.'))),
+                        tuple(map(int, B.windows_product_version(109).split('.'))))
+        for build in (0, -1, 2147483648, True, '109'):
+            with self.assertRaises(ValueError):
+                B.windows_product_code(build)
+
     def test_numeric_upgrade_order_is_independent_of_beta_display_versions(self):
         builds = [1, 2, 3, 65535, 65536, 16777215, 16777216, 2147483647]
         versions = [tuple(map(int, B.windows_product_version(build).split('.'))) for build in builds]
@@ -84,17 +99,19 @@ class MsiContent(unittest.TestCase):
                 ('CheckProtectedState', 1502), ('StopServices', 1900), ('CheckQuiescence', 1901),
                 ('CostFinalize', 1000), ('InstallValidate', 1400), ('SetARPINSTALLLOCATION', 1001), ('DeleteServices', 2000), ('RemoveFiles', 3500)]],
             'Upgrade': [[upgrade, '', '0.0.1', '', '1', '', 'WIX_UPGRADE_DETECTED'],
-                        [upgrade, '0.0.1', '', '', '2', '', 'WIX_DOWNGRADE_DETECTED']],
+                        [upgrade, '0.0.1', '', '', '2', '', 'WIX_DOWNGRADE_DETECTED'],
+                        [upgrade, '0.0.1', '0.0.1', '', '770', '', 'OINK_SAME_BUILD_DETECTED']],
+            'LaunchCondition': [['Installed OR NOT OINK_SAME_BUILD_DETECTED', 'Another edition has the same build.']],
         })
         acl['InstallExecuteSequence'].append(['CleanupMaintenance', 'REMOVE~="ALL" AND NOT UPGRADINGPRODUCTCODE', '6599'])
         acl['InstallExecuteSequence'].append(['CleanupUserData', 'REMOVE~="ALL" AND NOT UPGRADINGPRODUCTCODE', '6598'])
         acl['Property'] += [['ARPPRODUCTICON', 'OinkIcon.ico'], ['OinkLaunch', '1'],
-                            ['SecureCustomProperties', 'OINK_DESKTOP_SHORTCUT;OINK_START_AT_LOGIN'],
+                            ['SecureCustomProperties', 'OINK_DESKTOP_SHORTCUT;OINK_START_AT_LOGIN;OINK_SAME_BUILD_DETECTED'],
                             ['ALLUSERS', '1'], ['MSIRESTARTMANAGERCONTROL', 'Disable']]
         acl['Icon'] = [['OinkIcon.ico', hashlib.sha256((ROOT / 'apps/oink/src-tauri/icons/icon.ico').read_bytes()).hexdigest()]]
         acl['Binary'] = [[name, hashlib.sha256((ROOT / 'packaging/windows' / asset).read_bytes()).hexdigest()]
                          for name, asset in [('WixUI_Bmp_Dialog', 'installer-background.bmp'), ('WixUI_Bmp_Banner', 'installer-banner.bmp')]]
-        acl['Dialog'] = [[name, '50', '50', '370', '270', '3', 'Oink Setup', 'Artwork', default, default]
+        acl['Dialog'] = [[name, '50', '50', '370', '270', '3', 'Oink Pointer Trail Enhanced - third-party', 'Artwork', default, default]
                          for name, default in [('OinkWelcomeDlg', 'Install'), ('OinkExitDlg', 'Finish')]]
         acl['Shortcut'] = [[name, directory, 'Oink', component, target, '', '', '', 'OinkIcon.ico', '0', '', 'INSTALLFOLDER']
                            for name, directory, component, target in [
@@ -153,6 +170,8 @@ class MsiContent(unittest.TestCase):
         acl['CustomAction'].append(['PrepareUserSessions', '1', 'InstallerCA', 'PrepareUserSessions'])
         acl['InstallExecuteSequence'] += [['PrepareUserSessions', 'NOT UPGRADINGPRODUCTCODE', '1399'],
                                           ['CheckInstallPath', '', '1499']]
+        for name in ('InstallUISequence', 'InstallExecuteSequence'):
+            acl[name] += [['FindRelatedProducts', '', '25'], ['LaunchConditions', '', '100']]
         ET.SubElement(xml, 'Launch', Condition='Installed OR WEBVIEW2RUNTIME')
         return xml, extracted, acl
 
@@ -410,6 +429,52 @@ class MsiContent(unittest.TestCase):
                     changed[table][row][field] = value
                     with self.assertRaises(RuntimeError):
                         C.verify_msi(manifest, extracted, IDENTITY, changed)
+
+    def test_equal_build_conflict_guard_covers_both_sequences_without_blocking_repair(self):
+        with tempfile.TemporaryDirectory() as temp:
+            xml, extracted, tables = self.fixture(Path(temp))
+            manifest = Path(temp) / 'decompiled.wxs'
+            ET.ElementTree(xml).write(manifest)
+            C.verify_msi(manifest, extracted, IDENTITY, tables)
+            for field, value in ((0, '{00000000-0000-0000-0000-000000000000}'),
+                                 (1, '0.0.0'), (2, '0.0.2'), (3, '1033'),
+                                 (4, '768'), (4, '258'), (4, '514'), (5, 'ALL')):
+                changed = copy.deepcopy(tables)
+                changed['Upgrade'][2][field] = value
+                with self.subTest(field=field, value=value), self.assertRaisesRegex(RuntimeError, 'exactly the same build'):
+                    C.verify_msi(manifest, extracted, IDENTITY, changed)
+            for condition in ('NOT OINK_SAME_BUILD_DETECTED', 'Installed OR 1', '1'):
+                changed = copy.deepcopy(tables)
+                changed['LaunchCondition'][0][0] = condition
+                with self.subTest(condition=condition), self.assertRaisesRegex(RuntimeError, 'allowing its own repair'):
+                    C.verify_msi(manifest, extracted, IDENTITY, changed)
+            for table in ('InstallUISequence', 'InstallExecuteSequence'):
+                for action, field, value in (('FindRelatedProducts', 2, '101'),
+                                             ('LaunchConditions', 2, '1501'),
+                                             ('LaunchConditions', 1, 'UILevel = 5')):
+                    changed = copy.deepcopy(tables)
+                    next(row for row in changed[table] if row[0] == action)[field] = value
+                    with self.subTest(table=table, action=action), self.assertRaisesRegex(RuntimeError, 'before either install sequence'):
+                        C.verify_msi(manifest, extracted, IDENTITY, changed)
+            changed = copy.deepcopy(tables)
+            next(row for row in changed['Property'] if row[0] == 'SecureCustomProperties')[1] = 'OINK_DESKTOP_SHORTCUT;OINK_START_AT_LOGIN'
+            with self.assertRaisesRegex(RuntimeError, 'exactly the same build'):
+                C.verify_msi(manifest, extracted, IDENTITY, changed)
+
+    def test_source_authors_an_exact_detection_only_range_and_explicit_fork_label(self):
+        source = ET.parse(ROOT / 'packaging/windows/Package.wxs').getroot()
+        guard = next(row for row in C.elements(source, 'UpgradeVersion')
+                     if row.get('Property') == 'OINK_SAME_BUILD_DETECTED')
+        self.assertEqual((guard.get('Minimum'), guard.get('Maximum')),
+                         ('$(var.ProductVersion)', '$(var.ProductVersion)'))
+        self.assertEqual([guard.get(name) for name in ('IncludeMinimum', 'IncludeMaximum', 'OnlyDetect')],
+                         ['yes', 'yes', 'yes'])
+        self.assertIn('Installed OR NOT OINK_SAME_BUILD_DETECTED',
+                      [row.get('Condition') for row in C.elements(source, 'Launch')])
+        dialogs = ET.parse(ROOT / 'packaging/windows/Dialogs.wxs').getroot()
+        for row in C.elements(dialogs, 'Dialog'):
+            self.assertIn('Pointer Trail Enhanced', row.get('Title'))
+            self.assertIn('third-party', row.get('Title'))
 
     def test_build_label_is_accepted_as_arp_and_receipt_version(self):
         with tempfile.TemporaryDirectory() as temp:

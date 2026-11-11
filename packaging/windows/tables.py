@@ -36,7 +36,7 @@ def read_content_tables(path):
     try:
         tables = {}
         for table in ('MsiLockPermissionsEx', 'CreateFolder', 'Property', 'Registry',
-                      'Component', 'File', 'Directory', 'CustomAction', 'InstallExecuteSequence', 'Upgrade',
+                      'Component', 'File', 'Directory', 'CustomAction', 'InstallExecuteSequence', 'Upgrade', 'LaunchCondition',
                       'Icon', 'Binary', 'Dialog', 'Shortcut', 'MsiShortcutProperty', 'Control', 'ControlEvent', 'ControlCondition', 'InstallUISequence',
                       'AppSearch', 'RegLocator', 'CheckBox', 'Media'):
             view = uint()

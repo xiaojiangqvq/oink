@@ -10,7 +10,7 @@
         "stable",
         "beta"
       ],
-      "enabled": true
+      "enabled": false
     }
   ],
   "mac": {

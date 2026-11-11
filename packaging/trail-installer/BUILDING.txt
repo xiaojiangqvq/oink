@@ -1,38 +1,94 @@
 Pointer Trail Enhanced — third-party modification of Oink v0.3.4
+Release display version: 0.3.4-inhouse.109; Windows release build: 109
 
-The installer replaces only oink.exe, oink-agent.exe and their build/report
-metadata in an existing upstream Windows x64 0.3.4 build 108 installation.
-It leaves the original MSI receipt, service broker and updater unchanged.
-It does not bundle user profiles, pairing keys or private backups.
+PointerTrail-Setup.exe is a complete Windows x64 installer. It bundles the
+full application MSI, including its service and other product components,
+and Microsoft's official offline WebView2 Runtime installer. It supports
+fresh installation without the original application and direct upgrade from
+Oink 0.3.4 build 108 or the earlier personal movement-trail patch. The runtime
+is installed only when missing. Newer upstream installations are outside this
+release's supported overwrite scope.
 
-Build prerequisites: the Rust toolchain pinned in rust-toolchain.toml, Node/npm
-versions required by apps/oink/package.json, Python 3.11+, Visual Studio 2022
-C++ tools, CMake, cargo-about 0.9.2 and Windows .NET Framework 4 csc.exe.
-Use a short CARGO_TARGET_DIR outside the source (for example C:\oink-target)
-to avoid native CMake/MSBuild path-length limits. Put prerequisites on PATH.
+Do not uninstall before upgrading: normal Windows uninstallation removes
+local application data. The full installer upgrades in place and retains
+pairing, layout, preferences, and existing login-start settings. It has no
+old patch-restore button. A fresh installation can enable login startup from
+the app's settings; the elevated installer does not set a user's HKCU startup
+entry. The fork disables the official Windows update feed; manual upgrades
+are distributed at https://github.com/xiaojiangqvq/oink/releases.
 
-From a Git checkout, add all new source files to Git before building. From the
-source root, with output directories outside it:
+Build prerequisites
+
+Use Windows x64 with the Rust toolchain pinned in rust-toolchain.toml,
+Node 24.14.1 and npm 11.11.0 (root package.json), Python 3.11+, Visual Studio
+2022 C++ tools, CMake, cargo-about 0.9.2, a .NET runtime capable of running the
+pinned WiX 5.0.2 tools, and Windows .NET Framework 4 csc.exe. Put these tools on
+PATH. The MSI builder downloads hash-pinned WiX packages into --tool-cache;
+it does not globally install WiX. Run npm ci at the repository root to install
+the locked JavaScript dependencies.
+
+Use a short CARGO_TARGET_DIR outside the source, for example C:\oink-target,
+to avoid native CMake/MSBuild path-length limits. Keep binaries, MSI outputs,
+tool caches, symbols, bundle outputs, and installer outputs outside the source.
+Obtain MicrosoftEdgeWebView2RuntimeInstallerX64.exe from Microsoft's official
+Evergreen Standalone Installer download. The bundle builder verifies the
+approved runtime identity and hash; an arbitrary EXE is not an acceptable
+replacement. The bundle manifest records the runtime provenance.
+
+Build from a Git checkout
+
+Commit all product changes and newly added source files first. FULL_COMMIT
+below is the full lowercase 40-character result of git rev-parse HEAD.
+HASH is the source-tree SHA256 printed by the first command. Do not change
+the source between inventory creation, binary compilation, and packaging.
+
   python build-support/provenance.py --inventory ..\source-inventory.json
-  python build-support/build.py --target x86_64-pc-windows-msvc --source-tree-sha256 HASH_FROM_PREVIOUS_COMMAND --build 108 --symbols-output ..\private-symbols
-  python packaging/trail-installer/prepare_bundle.py --binaries C:\oink-target\x86_64-pc-windows-msvc\release --output ..\trail-bundle
+  python build-support/build.py --target x86_64-pc-windows-msvc --source-tree-sha256 HASH --source-commit FULL_COMMIT --build 109 --symbols-output ..\private-symbols
+  python build-support/package_notes.py --build 109 --source-commit FULL_COMMIT --output-root ..\release-history --output ..\embedded-update-notes.json
+  python packaging/windows/build.py --binaries C:\oink-target\x86_64-pc-windows-msvc\release --output ..\full-msi --tool-cache ..\wix-cache --build 109 --source-commit FULL_COMMIT --source-tree-sha256 HASH --update-notes-file ..\embedded-update-notes.json
+  python packaging/trail-installer/prepare_bundle.py --package ..\full-msi --webview2-runtime ..\runtime\MicrosoftEdgeWebView2RuntimeInstallerX64.exe --output ..\trail-bundle
   python packaging/trail-installer/build.py --bundle ..\trail-bundle --output ..\trail-installer
   python packaging/trail-installer/verify_installer.py --installer ..\trail-installer\PointerTrail-Setup.exe --output ..\trail-smoke
 
-The bundle builder verifies the current source hash and release binary hashes.
-It packages all product source files, lockfiles, notices and installer source.
-The source archive also includes a sibling source-inventory.json for portable
-file-mode verification, plus a sibling source-changes.patch. When rebuilding
-from that archive, skip the first command above: retain the bundled inventory,
-pass it as --source-inventory to build-support/build.py, and use its
-source_tree_sha256. prepare_bundle.py automatically reads these two sibling
-files when .git is absent (or accepts explicit --source-inventory/--source-patch).
-No command here publishes, installs, changes cursor settings, or uploads symbols.
+package_notes.py generates valid in-house notes. Before packaging, review and
+replace its notes text with the actual changes for the release; retain schema,
+kind, build, source_commit, and at least an English fallback. This file is
+embedded in the MSI. Use the same commit, build number, and source-tree hash
+throughout. The base Cargo/npm version remains 0.3.4; --source-commit plus
+--build 109 produces the supported display label 0.3.4-inhouse.109.
 
-The build and smoke verification do not replace live testing. Verify upgrade
-from original and earlier modified installs, settings preservation, both trail
-modes, custom color, Windows arrow restoration and paired-device operation.
+The MSI builder verifies the exact full binary provenance and decompiles the
+MSI for validation. The bundle builder checks source and package hashes and
+includes complete modified source, lockfiles, notices, installer source, and
+build instructions. The final wrapper outputs PointerTrail-Setup.exe and
+installer-build.json. Build and smoke commands do not install the product,
+change cursor settings, publish a release, or upload private symbols.
 
-The installer is unsigned. Its administrator worker validates its own embedded
-archive and extracts helper scripts into a protected Program Files directory.
-The current user's data and registry settings are never shipped in this package.
+Rebuild from the matching source archive
+
+Keep the sibling source-inventory.json and source-changes.patch from the
+archive. Skip inventory regeneration, use its source_tree_sha256 as HASH,
+and use the originating FULL_COMMIT recorded in the package metadata. Add
+--source-inventory ..\source-inventory.json to build-support/build.py. Pass
+--source-inventory ..\source-inventory.json and
+--source-patch ..\source-changes.patch to prepare_bundle.py if they are not
+found automatically beside the extracted source. Retain or regenerate matching
+embedded notes before building the MSI. No Git history is required to use a
+prepared, matching --update-notes-file.
+
+Installation behavior and verification limits
+
+The unsigned EXE's administrator worker validates its embedded archive and
+extracts it into a protected, unique ProgramData directory. It invokes the
+full MSI directly, without holding the updater maintenance lock. After a
+successful upgrade, old personal patch artifacts can be archived outside the
+installation directory. User data and private backups are never bundled.
+The initiating unelevated process handles migration of the old movement mode
+only when that setting is absent; it does not overwrite an explicit choice.
+
+Build and smoke verification do not replace live testing. Verify original
+build 108 and earlier personal-patch upgrades, settings retention, both trail
+modes, independent color, Windows arrow restoration, and paired-device use.
+A fresh-install test on a clean Windows computer has not yet been performed.
+Report actual validation results with the release; do not describe untested
+clean-machine or newer-upstream scenarios as tested.

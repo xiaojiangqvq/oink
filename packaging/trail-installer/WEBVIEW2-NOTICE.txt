@@ -1,0 +1,17 @@
+Microsoft Edge WebView2 Runtime 说明
+
+本完整安装程序包含微软原版的 WebView2 Evergreen x64 离线安装器。
+只有电脑缺少机器级 WebView2 运行时且用户同意微软许可时，才安装该组件。
+微软运行时保持原始数字签名；它不受本修改版的 GPL 许可证授权。
+完整微软许可见 WebView2-LICENSE.txt，安装窗口也可离线阅读该许可。
+
+Microsoft Defender SmartScreen 通知
+本应用使用的 WebView2 运行时可使用 Microsoft Defender SmartScreen，
+该功能可能向微软发送与安全相关的信息。详情见微软隐私声明与说明：
+https://aka.ms/privacy
+https://learn.microsoft.com/en-us/microsoft-edge/privacy-whitepaper#smartscreen
+
+WebView2 分发文档：
+https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution
+WebView2 许可来源：
+https://developer.microsoft.com/microsoft-edge/api/eula/webview2?locale=en-us

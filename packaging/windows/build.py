@@ -28,6 +28,15 @@ WIX_VERSION = '5.0.2'
 WIX_SHA256 = 'f30ef0c74e2a986126539c5780be93ac24e8136eaf723b1937b26272703ae173'
 UI_SHA256 = '5ef2c707614b9f70b6bbadd2d4abcb4124efee215e9b16bfbc80113079a604c7'
 FIREWALL_SHA256 = 'c9a1c99afab82225127b34036b719dea6c98c451e21b341ae1c62a674d0ba5ef'
+PRODUCT_CODE_NAMESPACE = 'pointer-trail-enhanced:'
+
+
+def windows_product_code(build):
+    # Retain the upstream UpgradeCode for data-preserving major upgrades, but
+    # never reuse an official ProductCode for different package contents.
+    windows_product_version(build)  # Apply the same bounded numeric-build contract.
+    return str(uuid.uuid5(uuid.UUID(I['windows']['upgrade_code']),
+                          PRODUCT_CODE_NAMESPACE + str(build))).upper()
 
 
 def run(*args, **kwargs):
@@ -200,7 +209,7 @@ def main():
     # ProductVersion's MSI fields are 8/8/16 bits. Encode build, not display
     # semver: beta -> stable and display-version changes must never downgrade.
     msi_version = windows_product_version(a.build)
-    product_code = str(uuid.uuid5(uuid.UUID(w['upgrade_code']), str(a.build))).upper()
+    product_code = windows_product_code(a.build)
     license_rtf = a.output / 'license.rtf'
     write_license_rtf(license_rtf)
     notes_file = a.update_notes_file or a.output / 'embedded-update-notes.json'

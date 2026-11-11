@@ -1,10 +1,14 @@
 # Pointer Trail Enhanced — third-party modification
 
-This fork is based on [Oink v0.3.4](https://github.com/oinkvm/oink/tree/v0.3.4). It adds a choice between the original circle gesture and any mouse movement, independent trail colors, and Windows arrow styles and sizes. It is a modified distribution, not an official Oink release or an endorsement by its authors. Original attribution and documentation follow below.
+This fork is based on [Oink v0.3.4](https://github.com/oinkvm/oink/tree/v0.3.4). Version **0.3.4-inhouse.109 (build 109)** adds a choice between the original circle gesture and any mouse movement, independent trail colors, and Windows arrow styles and sizes. It is a third-party modification, not an official Oink release or an endorsement by its authors. Original attribution and documentation follow below.
 
-The overwrite installer requires an existing **Windows x64 Oink 0.3.4, build 108** installation. It preserves pairing, layout, and preferences, supports upgrading the earlier personal movement-trail patch, and provides a restore option. Arrow preferences affect the local Windows user; select System in the enhanced app to restore the previous arrow before reverting the application. Other official versions and fresh installations are not supported by this patch installer.
+Download the full **Windows x64 installer** from [this fork's Releases](https://github.com/xiaojiangqvq/oink/releases). `PointerTrail-Setup.exe` contains the complete application MSI and Microsoft's official offline WebView2 Runtime installer; it installs the runtime only when missing. A fresh installation does not require Oink to be installed first. Direct upgrades support Oink **0.3.4 build 108** and the earlier personal movement-trail patch, preserving pairing, layout, and preferences. Install it on each Windows computer. Support for overwriting newer upstream versions is not claimed; this release has no macOS package.
 
-See [Chinese usage instructions](README.zh-CN.md) and [build instructions](packaging/trail-installer/BUILDING.txt). The installer includes matching complete source and license notices. The original circle mode remains the default for an unmodified installation. Trail mode is local to the input source; color and Windows arrow preferences are local to each display computer.
+**Do not uninstall before upgrading.** Normal Windows uninstallation removes local application data. Run the new installer directly and use your computer's own keyboard and mouse while the application exits for installation. Existing login-start preferences are retained; for a fresh installation, enable login startup in the app's settings if wanted. The elevated installer does not set another user's startup registry entry.
+
+Find all added controls under **Settings → Keyboard & Mouse**. The original circle mode is the default for fresh or original installations; upgrading the earlier always-on personal patch retains movement mode unless a mode was already explicitly selected. Mode is local to the computer supplying physical mouse input. Trail color and Windows arrow style/size are local to the computer displaying them. Arrow changes also affect other Windows apps; text and resize cursor roles stay unchanged. Select **System** to restore the saved arrow; an external Windows arrow change is preserved.
+
+The fork disables the official Windows update feed. Get future manual upgrades from [this fork's Releases](https://github.com/xiaojiangqvq/oink/releases). There is no old patch-restore button in the full installer. Matching complete source, license notices, and [build instructions](packaging/trail-installer/BUILDING.txt) accompany the release. Do not share private local backups or user data. A fresh-install test on a clean Windows computer has not yet been performed. See [Chinese usage instructions](README.zh-CN.md).
 
 ---
 
@@ -23,12 +27,12 @@ Oink, short for "Oink Is Not only a KVM", is modern software that builds a peer-
 
 ## Install
 
-Get installers and matching source from [GitHub Releases](https://github.com/oinkvm/oink/releases).
+Get this modified Windows installer and matching source from [the fork's Releases](https://github.com/xiaojiangqvq/oink/releases). [Upstream releases](https://github.com/oinkvm/oink/releases) contain the original project, including its Mac packages.
 
 Supported operating systems and versions:
 
-- **Mac:** Apple silicon (arm64), macOS 14.2+; Intel (x64), macOS 14.2+ (untested)
-- **Windows:** x64, Windows 10 version 1809 (build 17763) or later, or Windows 11. Windows 10 versions before 22H2 are untested. Windows 10 LTSC (such as LTSC 2019 / LTSC 2021) does not include the WebView2 Runtime; install the Microsoft Edge WebView2 Runtime (Evergreen) first: https://developer.microsoft.com/microsoft-edge/webview2/
+- **Mac (upstream only):** Apple silicon (arm64), macOS 14.2+; Intel (x64), macOS 14.2+ (untested). This modified release supplies Windows packages only.
+- **Windows:** x64, Windows 10 version 1809 (build 17763) or later, or Windows 11. Windows 10 versions before 22H2 are untested. The enhanced installer includes the official offline WebView2 Runtime and installs it when missing, including on Windows LTSC.
 
 If SmartScreen says "Windows protected your PC", use **More info → Run anyway** only if offered. UAC may show an unknown publisher.
 

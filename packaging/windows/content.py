@@ -46,6 +46,9 @@ def verify_install_ui(tables):
         raise RuntimeError('MSI desktop choice must be remembered machine-wide for upgrades and repair')
     controls = {(row[0], row[1]): row for row in tables.get('Control', [])}
     dialogs = {row[0]: row for row in tables.get('Dialog', [])}
+    for name in ('OinkWelcomeDlg', 'OinkExitDlg'):
+        if dialogs.get(name, [])[6:7] != ['Oink Pointer Trail Enhanced - third-party']:
+            raise RuntimeError('MSI owned dialogs must clearly identify the third-party enhanced edition')
     for dialog, following in [('OinkWelcomeDlg', 'LicenseText'), ('OinkExitDlg', 'LaunchChoice')]:
         artwork = controls.get((dialog, 'Artwork'))
         if (dialog not in dialogs or dialogs[dialog][7] != 'Artwork' or not artwork or
@@ -222,6 +225,19 @@ def verify_registration(tables, metadata, identity):
             older[1] or older[2] != numeric or int(older[4]) & (2 | 512) or
             newer[1] != numeric or newer[2] or not int(newer[4]) & 2):
         raise RuntimeError('MSI major upgrade ranges must compare the numeric release build')
+    same = ranges.get('OINK_SAME_BUILD_DETECTED')
+    if (not same or same[0].strip('{}').upper() != upgrade or same[1:4] != [numeric, numeric, ''] or
+            int(same[4]) != 770 or same[5] or
+            'OINK_SAME_BUILD_DETECTED' not in properties.get('SecureCustomProperties', '').split(';') or
+            'OINK_SAME_BUILD_DETECTED' in properties or
+            'Installed OR NOT OINK_SAME_BUILD_DETECTED' not in dict(tables.get('LaunchCondition', []))):
+        raise RuntimeError('MSI must refuse another product at exactly the same build while allowing its own repair')
+    for name in ('InstallUISequence', 'InstallExecuteSequence'):
+        actions = {row[0]: row for row in tables.get(name, [])}
+        find, launch = actions.get('FindRelatedProducts'), actions.get('LaunchConditions')
+        if (not find or not launch or find[1] or launch[1] or
+                not int(find[2]) < int(launch[2]) < 1400):
+            raise RuntimeError('MSI must detect and reject same-build editions before either install sequence can change files')
 
 
 def verify_msi(manifest, extracted, identity, tables):

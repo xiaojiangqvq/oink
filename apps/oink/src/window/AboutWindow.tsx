@@ -5,7 +5,7 @@ import type { Platform, StageSize } from './DesktopWindow';
 import { shell } from '../api/client';
 import { inTauri } from '../api/transport';
 import { tr } from '../i18n';
-const REPO = 'https://github.com/oinkvm/oink';
+const REPO = 'https://github.com/xiaojiangqvq/oink';
 interface LicenseComponent {
     id: string;
     name: string;
@@ -151,7 +151,7 @@ export function AboutWindow({ platform, open, front, version, build, stage, onFr
     {page === 'main' ? <div className="about__main">
       <AppIcon platform={platform} size={76}/><Wordmark /><p className="about__ver">{build==null?tr('版本 {0}', version):tr('版本 {0} ({1})', version, build)}</p>
       <p className="about__edition">{tr('尾迹增强版 · 第三方修改版')}</p>
-      <Button className="about__repo" variant="ghost" size="sm" onClick={() => { void shell.openUrl(REPO); }} leading={<svg className="about__gh" viewBox="0 0 16 16" aria-hidden><path d={GITHUB}/></svg>}>github.com/oinkvm/oink</Button>
+      <Button className="about__repo" variant="ghost" size="sm" onClick={() => { void shell.openUrl(REPO); }} leading={<svg className="about__gh" viewBox="0 0 16 16" aria-hidden><path d={GITHUB}/></svg>}>github.com/xiaojiangqvq/oink</Button>
       <Button className="about__oss" variant="ghost" size="sm" trailing={<Icon name="chevron-right"/>} onClick={() => setPage('licenses')}>{tr('开源软件引用')}</Button>
       <Button variant="ghost" size="sm" onClick={() => { const generation=++termsGeneration.current; setPage('licenses'); setSelected('product'); setTerms(''); setError(false); void Promise.all(['LICENSE', 'LICENSE-ADDITIONAL-TERMS.md'].map(p => shell.attribution(p))).then(texts => {if(termsGeneration.current===generation)setTerms(texts.join('\n\n'));}).catch(() => {if(termsGeneration.current===generation)setError(true);}); }}>GPL-3.0 · {tr('附加条款')}</Button>
       <p className="about__copy">© 2026 Hachiwii</p>

@@ -26,14 +26,14 @@
       <Publish Dialog="MaintenanceTypeDlg" Control="Back" Event="NewDialog" Value="MaintenanceWelcomeDlg" />
       <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" />
 
-      <Dialog Id="OinkWelcomeDlg" Width="370" Height="270" Title="Oink Setup">
+      <Dialog Id="OinkWelcomeDlg" Width="370" Height="270" Title="Oink Pointer Trail Enhanced - third-party">
         <!-- Include the background in the control chain, as WiX's stock dialogs
              do. A tab-skipped bitmap repaints over the rich-edit client area.
              Artwork stays in the left gutter; native controls use the plain
              button-face area on the right rather than overlaying the drawing. -->
         <Control Id="Artwork" Type="Bitmap" X="0" Y="0" Width="370" Height="234" TabSkip="no" Text="WixUI_Bmp_Dialog" />
         <Control Id="Heading" Type="Text" X="130" Y="8" Width="226" Height="20" Transparent="yes"
-                 Text="{\WixUI_Font_Title}Welcome to Oink Setup" />
+                 Text="{\WixUI_Font_Title}Pointer Trail Enhanced (third-party)" />
         <Control Id="LicenseText" Type="ScrollableText" X="130" Y="30" Width="226" Height="130" Sunken="yes" TabSkip="no">
           <Text SourceFile="$(var.LicenseRtf)" />
         </Control>
@@ -66,10 +66,10 @@
           <Publish Event="SpawnDialog" Value="CancelDlg" />
         </Control>
       </Dialog>
-      <Dialog Id="OinkExitDlg" Width="370" Height="270" Title="Oink Setup">
+      <Dialog Id="OinkExitDlg" Width="370" Height="270" Title="Oink Pointer Trail Enhanced - third-party">
         <Control Id="Artwork" Type="Bitmap" X="0" Y="0" Width="370" Height="234" TabSkip="no" Text="WixUI_Bmp_Dialog" />
         <Control Id="Heading" Type="Text" X="135" Y="20" Width="220" Height="45" Transparent="yes"
-                 Text="{\WixUI_Font_Title}Oink Setup completed" />
+                 Text="{\WixUI_Font_Title}Pointer Trail Enhanced Setup completed" />
         <Control Id="Description" Type="Text" X="135" Y="75" Width="220" Height="35" Transparent="yes"
                  Text="Click Finish to close Setup." />
         <Control Id="LaunchChoice" Type="CheckBox" X="135" Y="135" Width="220" Height="18" Hidden="yes"
@@ -86,7 +86,7 @@
           <Publish Event="SpawnDialog" Value="OinkFinishWarningDlg" Order="3" Condition="OinkFinishFailed = &quot;1&quot;" />
         </Control>
       </Dialog>
-      <Dialog Id="OinkFinishWarningDlg" Width="370" Height="150" Title="Oink Setup">
+      <Dialog Id="OinkFinishWarningDlg" Width="370" Height="150" Title="Oink Pointer Trail Enhanced - third-party">
         <Control Id="Heading" Type="Text" X="20" Y="18" Width="330" Height="24"
                  Text="{\WixUI_Font_Title}Setup is complete" />
         <Control Id="Description" Type="Text" X="20" Y="49" Width="330" Height="58"

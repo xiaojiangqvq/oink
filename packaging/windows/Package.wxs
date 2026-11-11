@@ -43,6 +43,17 @@
     <!-- Install under the maintenance lock, then remove the old product inside
          the same rollback transaction. Component GUIDs/paths must remain stable. -->
     <MajorUpgrade DowngradeErrorMessage="A newer build is already installed." Schedule="afterInstallExecute" />
+    <!-- This fork owns distinct ProductCodes but shares the upgrade family.
+         Equal versions are not a major upgrade: refuse a different product
+         instead of installing two owners over the same service and files.
+         FindRelatedProducts skips maintenance, so this MSI still repairs itself. -->
+    <Upgrade Id="$(var.UpgradeCode)">
+      <UpgradeVersion Minimum="$(var.ProductVersion)" Maximum="$(var.ProductVersion)"
+                      IncludeMinimum="yes" IncludeMaximum="yes" OnlyDetect="yes"
+                      Property="OINK_SAME_BUILD_DETECTED" />
+    </Upgrade>
+    <Launch Condition="Installed OR NOT OINK_SAME_BUILD_DETECTED"
+            Message="A different Oink edition with the same build is already installed. Use a newer Pointer Trail Enhanced installer; do not uninstall to preserve your pairing and settings." />
     <MediaTemplate EmbedCab="yes" />
     <!-- MSI reports VersionNT=603 even on Windows 10/11. Use the OS build
          registry value as well, instead of an impossible VersionNT=1000 gate. -->

@@ -1,4 +1,18 @@
-> **第三者による変更版 / Third-party modification:** This branch is Pointer Trail Enhanced, based on Oink v0.3.4. It is not an official release. See the [modified features and installation limits](README.md) before using the original documentation below.
+# ポインター軌跡拡張版（第三者による変更版）
+
+[Oink v0.3.4](https://github.com/oinkvm/oink/tree/v0.3.4) を基にした **0.3.4-inhouse.109（build 109）** です。公式リリースではなく、原作者による承認を示すものでもありません。元の説明と著作者表示は下に残しています。
+
+[このフォークの Releases](https://github.com/xiaojiangqvq/oink/releases) から Windows x64 用の完全なインストーラー `PointerTrail-Setup.exe` を入手できます。アプリ全体の MSI と Microsoft 公式 WebView2 オフラインランタイムを同梱し、ランタイムがない場合だけ追加します。新規インストールに原版の事前インストールは不要です。既存の **Oink 0.3.4 build 108** と以前の個人用軌跡パッチからは、ペアリング、画面配置、設定を保持して直接更新できます。新しい上流バージョンへの上書き対応は保証しておらず、この変更版の macOS パッケージはありません。
+
+**更新前にアンインストールしないでください。** Windows の通常のアンインストールではローカルのアプリデータが削除されます。各 Windows PC で新しいインストーラーを直接実行してください。インストール中はアプリが終了するため、その PC に接続したキーボードとマウスを使ってください。既存のログイン時起動設定は保持されます。新規インストールで必要な場合は、アプリの設定から有効にしてください。管理者権限のインストーラーはユーザーのログイン起動項目を作成しません。
+
+追加した設定はすべて **設定 → キーボードとマウス** にあります。軌跡の総スイッチを残し、従来の素早い円操作と「移動するたびに表示」を選択できます。軌跡の色はテーマ連動または独立した色にでき、Windows の矢印はシステム、白、黒、反転とサイズを選べます。矢印の変更はほかの Windows アプリにも適用され、文字入力やサイズ変更のカーソルは変わりません。システムを選ぶと以前の矢印に戻り、Windows 側で別途変更した矢印は保持されます。
+
+新規・原版からの導入では円操作が初期値です。以前の常時軌跡パッチからは移動モードを引き継ぎ、明示済みの選択は上書きしません。モードは物理マウスの接続先、色と矢印は表示先の PC ごとの設定です。Windows の公式更新フィードは無効にしています。今後は[このフォークの Releases](https://github.com/xiaojiangqvq/oink/releases) から手動更新してください。完全インストーラーには旧パッチの「原版に戻す」ボタンはありません。
+
+対応する完全なソースとライセンスを同梱しています。[ビルド手順](packaging/trail-installer/BUILDING.txt)も参照してください。個人のバックアップやユーザーデータは配布しないでください。クリーンな Windows PC での新規インストール実機テストは、まだ完了していません。
+
+---
 
 <p align="center">
   <picture>
@@ -15,12 +29,12 @@ Oink は「Oink Is Not only a KVM」の略で、複数の Windows と Mac のあ
 
 ## インストール
 
-インストーラーと対応するソースコードは [GitHub Releases](https://github.com/oinkvm/oink/releases) から入手できます。
+Windows 変更版と対応するソースコードは[このフォークの Releases](https://github.com/xiaojiangqvq/oink/releases) から入手できます。[上流の Releases](https://github.com/oinkvm/oink/releases) では原版とその Mac パッケージを配布しています。
 
 対応 OS とバージョン：
 
-- **Mac**：Apple シリコン（arm64）、macOS 14.2 以降。Intel（x64）、macOS 14.2 以降（未テスト）
-- **Windows**：x64、Windows 10 1809（ビルド 17763）以降、または Windows 11。22H2 より前の Windows 10 バージョンは未テストです。Windows 10 LTSC（LTSC 2019 / LTSC 2021 など）には WebView2 Runtime が付属しないため、先に Microsoft Edge WebView2 Runtime（Evergreen）をインストールしてください：https://developer.microsoft.com/microsoft-edge/webview2/
+- **Mac（上流のみ）**：Apple シリコン（arm64）、macOS 14.2 以降。Intel（x64）、macOS 14.2 以降（未テスト）。この変更版は Windows パッケージのみです。
+- **Windows**：x64、Windows 10 1809（ビルド 17763）以降、または Windows 11。22H2 より前の Windows 10 バージョンは未テストです。拡張版には公式 WebView2 オフラインランタイムを同梱し、Windows LTSC などランタイムがない環境で追加します。
 
 SmartScreen に「Windows によって PC が保護されました」と表示された場合は、選択肢が表示されたときに限り **詳細情報 → 実行** を選んでください。UAC では発行元が不明と表示されることがあります。
 

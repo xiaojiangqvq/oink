@@ -1,6 +1,6 @@
 # 指针尾迹增强版（第三方修改）
 
-本分支基于 [Oink v0.3.4](https://github.com/oinkvm/oink/tree/v0.3.4)，用于分享可选择触发方式、颜色和 Windows 箭头样式的修改。它不是 Oink 官方发行版，也不代表原作者认可本修改。原项目说明与署名保留在下方。
+本分支基于 [Oink v0.3.4](https://github.com/oinkvm/oink/tree/v0.3.4)，修改版版本为 **0.3.4-inhouse.109（build 109）**，增加尾迹触发方式、颜色和 Windows 箭头样式选择。它不是 Oink 官方发行版，也不代表原作者认可本修改。原项目说明与署名保留在下方。
 
 - 保留尾迹总开关，增加“快速画圈（原版）／移动即显示”选择；停止移动后按原有动画消退。
 - 尾迹可跟随主题色，也可选择预设色或自定义颜色，保留原有尾迹形状。
@@ -9,13 +9,17 @@
 
 ## 安装增强版
 
-保留现有程序，无须先卸载。安装包仅支持 **Windows x64、已安装 Oink 0.3.4（build 108）**，也支持更新早期的个人尾迹补丁；不支持覆盖其他官方版本或全新安装。
+从[本分支的 Releases](https://github.com/xiaojiangqvq/oink/releases) 下载完整 **Windows x64 安装程序** `PointerTrail-Setup.exe`。它包含完整应用 MSI 和微软官方 WebView2 离线运行库，缺少运行库时才安装。新电脑可直接安装，无须先安装原版。
 
-双击 `PointerTrail-Setup.exe`，选择“安装 / 更新增强版”，确认 Windows 管理员权限提示。完成后在“设置 → 键鼠”选择尾迹模式、颜色和鼠标箭头。配对、布局和现有设置会保留。原版升级默认保持画圈模式；早期“移动就显示”的个人补丁升级会保留移动模式。
+已有 **Oink 0.3.4（build 108）** 或早期个人尾迹补丁的电脑可直接覆盖升级，保留配对、屏幕布局和现有设置。两台 Windows 电脑分别运行安装程序即可。本版未承诺覆盖更新的官方版本，也没有提供 macOS 安装包。
 
-安装期间程序会退出，请使用当前电脑自己的键鼠。再次运行同一安装包可“恢复原版”；如需恢复原箭头，请先在增强版选择“原系统样式”。恢复程序不撤销配对和布局。升级官方新版本前，先恢复原版；本分支不自动合并官方更新。
+**不要先卸载。** Windows 正常卸载会删除本机应用数据；升级时直接运行新安装包。双击安装程序，选择“安装 / 更新增强版”并确认 Windows 管理员权限提示。安装期间程序会退出，请使用当前电脑自己的键鼠。
 
-安装包包含对应完整源码、许可证和构建说明，可从安装窗口的“查看日志与源代码”打开。构建过程见 [安装包构建说明](packaging/trail-installer/BUILDING.txt)。本机私有备份和用户数据不应分享。
+完成后在 **设置 → 键鼠** 选择尾迹模式、颜色和鼠标箭头。新安装和原版升级默认使用画圈模式；早期“移动就显示”的个人补丁会保留移动模式，已有明确选择不被覆盖。现有登录启动设置会保留；新安装如需登录时启动，请在应用设置中开启，提权安装过程不会代替用户写入登录启动项。
+
+本分支关闭 Windows 官方更新源，后续从[本分支的 Releases](https://github.com/xiaojiangqvq/oink/releases) 下载新版手动升级。完整安装程序不再提供旧补丁的“恢复原版”按钮。如需恢复之前的 Windows 箭头，请在增强版中选择“原系统样式”。
+
+安装包包含对应完整源码、许可证和构建说明，可从安装窗口的“查看日志与源代码”打开。构建过程见[安装包构建说明](packaging/trail-installer/BUILDING.txt)。本机私有备份和用户数据不应分享。目前尚未在干净的 Windows 电脑上完成全新安装实测。
 
 ---
 
@@ -34,12 +38,12 @@ Oink 是 Oink Is Not only a KVM 的缩写，是一款在多台 Windows 和 Mac �
 
 ## 安装
 
-从 [GitHub Releases](https://github.com/oinkvm/oink/releases) 下载安装包和对应的源码。
+从[本分支的 Releases](https://github.com/xiaojiangqvq/oink/releases) 下载 Windows 修改版安装包和对应源码。[上游 Releases](https://github.com/oinkvm/oink/releases) 提供原版及其 Mac 安装包。
 
 支持的操作系统和版本：
 
-- **Mac**：Apple 芯片（arm64），macOS 14.2 及以上；Intel（x64），macOS 14.2 及以上（未经测试）
-- **Windows**：x64，Windows 10 1809（build 17763）及以上，或 Windows 11。22H2 之前的 Windows 10 版本未经测试。Windows 10 LTSC（如 LTSC 2019 / LTSC 2021）不自带 WebView2 Runtime，请先安装 Microsoft Edge WebView2 Runtime（Evergreen）：https://developer.microsoft.com/microsoft-edge/webview2/
+- **Mac（仅上游）**：Apple 芯片（arm64），macOS 14.2 及以上；Intel（x64），macOS 14.2 及以上（未经测试）。本次修改版仅提供 Windows 安装包。
+- **Windows**：x64，Windows 10 1809（build 17763）及以上，或 Windows 11。22H2 之前的 Windows 10 版本未经测试。增强版安装包内含官方 WebView2 离线运行库，在系统缺少时安装，适用于 Windows LTSC 等未预装运行库的系统。
 
 如果 SmartScreen 提示“Windows 已保护你的电脑”，仅在出现相应选项时点击 **更多信息 → 仍要运行**。UAC 可能显示发布者未知。
 
