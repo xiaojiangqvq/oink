@@ -71,11 +71,9 @@ impl Node {
             #[cfg(windows)]
             {
                 let settings = self.settings();
-                if let Err(error) = crate::pointer_style::apply(
-                    &self.inner.data_dir,
-                    settings.pointer_style,
-                    settings.pointer_size,
-                ) {
+                if let Err(error) =
+                    crate::pointer_style::apply(&self.inner.data_dir, settings.pointer_style, settings.pointer_size)
+                {
                     tracing::warn!(%error, "could not apply saved Windows arrow appearance");
                 }
             }
