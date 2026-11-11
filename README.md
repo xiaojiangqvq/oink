@@ -2,7 +2,7 @@
 
 Based on [Oink v0.3.4](https://github.com/oinkvm/oink/tree/v0.3.4), version **0.3.4-inhouse.110 (build 110)** adds selectable trail triggering, independent trail colors, and Windows arrow styles/sizes. This is a third-party modification, not an official Oink release. Original attribution and documentation remain below.
 
-Download `PointerTrail-Setup.exe` from [this fork's Releases](https://github.com/xiaojiangqvq/oink/releases) and follow the standard Windows setup wizard on each PC. The complete Windows x64 package works without an existing installation and includes Microsoft's offline WebView2 Runtime, installed only when missing.
+Download `PointerTrail-Setup.exe` from [this fork's Releases](https://github.com/xiaojiangqvq/oink/releases) and follow the standard Windows setup wizard on each PC. Installer revision 2 includes the complete Windows x64 app and Microsoft's small WebView2 bootstrapper. **Internet is needed only if WebView2 is missing**, to download the runtime. The app remains build 110.
 
 When Oink is already installed, choose:
 
@@ -14,7 +14,7 @@ When Oink is already installed, choose:
 
 After installation, open Oink from the Start menu. All added controls are in **Settings → Keyboard & Mouse**: original fast-circle or any-movement mode, trail color, and arrow style/size. Arrow changes affect other Windows apps; text and resize cursors stay unchanged. Select System to restore the saved arrow. Mode follows the physical mouse's computer; color and arrow preferences are local to the displaying PC. Existing login-start preferences remain; enable it in settings after a fresh install if wanted.
 
-Future upgrades are manual through [this fork's Releases](https://github.com/xiaojiangqvq/oink/releases); the official Windows update feed is disabled. Matching source and licenses accompany the release. See [build instructions](packaging/trail-installer/BUILDING.txt). No macOS package is supplied. A fresh installation on a clean Windows PC has not yet been tested.
+Future upgrades are manual through [this fork's Releases](https://github.com/xiaojiangqvq/oink/releases); the official Windows update feed is disabled. Complete app and installer source are separate release downloads, not inside the EXE; license notices remain included. See [build instructions](packaging/trail-installer/BUILDING.txt). No macOS package is supplied. A fresh installation on a clean Windows PC has not yet been tested.
 
 ---
 
@@ -38,7 +38,7 @@ Get this modified Windows installer and matching source from [the fork's Release
 Supported operating systems and versions:
 
 - **Mac (upstream only):** Apple silicon (arm64), macOS 14.2+; Intel (x64), macOS 14.2+ (untested). This modified release supplies Windows packages only.
-- **Windows:** x64, Windows 10 version 1809 (build 17763) or later, or Windows 11. Windows 10 versions before 22H2 are untested. The enhanced installer includes the official offline WebView2 Runtime and installs it when missing, including on Windows LTSC.
+- **Windows:** x64, Windows 10 version 1809 (build 17763) or later, or Windows 11. Windows 10 versions before 22H2 are untested. If WebView2 is missing, including on some Windows LTSC systems, its official bootstrapper downloads the runtime during installation and needs internet access.
 
 If SmartScreen says "Windows protected your PC", use **More info → Run anyway** only if offered. UAC may show an unknown publisher.
 

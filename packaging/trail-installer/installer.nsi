@@ -51,7 +51,7 @@ Var MutexHandle
 Page custom ModePage ModeLeave
 !define MUI_PAGE_CUSTOMFUNCTION_PRE LicensePre
 !define MUI_PAGE_CUSTOMFUNCTION_LEAVE LicenseLeave
-!define MUI_LICENSEPAGE_TEXT_TOP "此电脑需要 Microsoft WebView2 运行时。请阅读微软许可。"
+!define MUI_LICENSEPAGE_TEXT_TOP "此电脑需要 WebView2。阅读许可后，安装程序将联网安装。"
 !define MUI_LICENSEPAGE_CHECKBOX
 !define MUI_LICENSEPAGE_CHECKBOX_TEXT "我接受 Microsoft WebView2 许可条款"
 !insertmacro MUI_PAGE_LICENSE "${SUPPORT_DIR}\license.txt"
@@ -307,12 +307,26 @@ Section "Oink"
     ; NSIS 3.11+ creates $PLUGINSDIR with restricted permissions when elevated.
     ; CRCCheck force verifies the embedded stream before any executable is extracted.
     SetOutPath "$PLUGINSDIR\Support"
-    File /r "${SUPPORT_DIR}\*"
+    ; Source archives are separate release assets. Explicit names prevent a
+    ; leftover archive in the build directory from inflating the installer.
+    File "${SUPPORT_DIR}\manifest.json"
+    File "${SUPPORT_DIR}\LICENSE"
+    File "${SUPPORT_DIR}\LICENSE-ADDITIONAL-TERMS.md"
+    File "${SUPPORT_DIR}\NOTICE"
+    File "${SUPPORT_DIR}\THIRD_PARTY_LICENSES.md"
+    File "${SUPPORT_DIR}\third-party-licenses.json"
+    File "${SUPPORT_DIR}\使用说明.txt"
+    File "${SUPPORT_DIR}\WEBVIEW2-NOTICE.txt"
+    File "${SUPPORT_DIR}\WebView2-LICENSE.txt"
+    File "${SUPPORT_DIR}\WIX-LICENSE.txt"
+    File "${SUPPORT_DIR}\NSIS-LICENSE.txt"
+    File "${SUPPORT_DIR}\license.html"
+    File "${SUPPORT_DIR}\license.txt"
     ${If} $Mode != "remove"
       SetOutPath "$PLUGINSDIR\payload"
       File /oname=Oink.msi "${BUNDLE_DIR}\payload\Oink.msi"
       ${If} $RuntimePresent = 0
-        File /oname=MicrosoftEdgeWebView2RuntimeInstallerX64.exe "${BUNDLE_DIR}\payload\MicrosoftEdgeWebView2RuntimeInstallerX64.exe"
+        File /oname=MicrosoftEdgeWebview2Setup.exe "${BUNDLE_DIR}\payload\MicrosoftEdgeWebview2Setup.exe"
       ${EndIf}
     ${EndIf}
     ; Recheck the MSI registration just before acting; other installers can run
@@ -336,11 +350,58 @@ Section "Oink"
       SetErrorLevel 1602
       Abort
     ${EndIf}
+    ; Finish the online prerequisite before any clean-install removal. A failed
+    ; download must leave the existing Oink installation and its settings intact.
+    ${If} $Mode != "remove"
+    ${AndIf} $RuntimePresent = 0
+      DetailPrint "正在下载并安装 Microsoft WebView2…"
+      StrCpy $LastResult 1603
+      ClearErrors
+      SetDetailsPrint none
+      ExecWait '"$PLUGINSDIR\payload\MicrosoftEdgeWebview2Setup.exe" /silent /install' $LastResult
+      SetDetailsPrint lastused
+      ${If} ${Errors}
+        StrCpy $LastResult 1603
+      ${EndIf}
+      ${If} $LastResult != 0
+      ${AndIf} $LastResult != 3010
+        SetErrorLevel $LastResult
+        MessageBox MB_ICONSTOP "WebView2 下载或安装未完成。请检查网络连接后重试。"
+        Abort
+      ${EndIf}
+      Call CheckResult
+      ${If} $LastResult = 3010
+        StrCpy $FinishText "WebView2 已安装。重新启动后，请再次运行此安装程序。"
+        Goto operation_done
+      ${EndIf}
+      Call DetectRuntime
+      ${If} $RuntimePresent != 1
+        MessageBox MB_ICONSTOP "WebView2 尚未准备就绪。请重新启动 Windows 后重试。"
+        SetErrorLevel 1603
+        Abort
+      ${EndIf}
+    ${EndIf}
+    ; A prerequisite download may take time. Revalidate the selected MSI receipt
+    ; before acting, without assuming it is unchanged since the wizard opened.
+    Call DetectProduct
+    ${If} $ExistingProduct != $5
+    ${OrIf} $ExistingVersion != $6
+      MessageBox MB_ICONSTOP "Oink 的安装状态已改变，请重新打开此安装程序。"
+      SetErrorLevel 1618
+      Abort
+    ${EndIf}
+    Call CheckInstallVersion
     ${If} $Mode == "remove"
     ${OrIf} $Mode == "clean"
       DetailPrint "正在卸载 Oink…"
       StrCpy $LastResult 1603
+      ClearErrors
+      SetDetailsPrint none
       ExecWait '"$SYSDIR\msiexec.exe" /x $ExistingProduct /qn /norestart /l*v "$LogDir\uninstall.log"' $LastResult
+      SetDetailsPrint lastused
+      ${If} ${Errors}
+        StrCpy $LastResult 1603
+      ${EndIf}
       Call CheckResult
       ${If} $Mode == "remove"
         StrCpy $FinishText "Oink 已卸载。"
@@ -353,30 +414,18 @@ Section "Oink"
       ${EndIf}
       StrCpy $ExistingProduct ""
     ${EndIf}
-    Call DetectRuntime
-    ${If} $RuntimePresent = 0
-      ${If} $RuntimeAccepted != 1
-        MessageBox MB_ICONSTOP "WebView2 状态已改变，请重新运行安装程序并阅读运行时许可。"
-        SetErrorLevel 1602
-        Abort
-      ${EndIf}
-      DetailPrint "正在安装 Microsoft WebView2…"
-      StrCpy $LastResult 1603
-      ExecWait '"$PLUGINSDIR\payload\MicrosoftEdgeWebView2RuntimeInstallerX64.exe" /silent /install' $LastResult
-      Call CheckResult
-      Call DetectRuntime
-      ${If} $RuntimePresent != 1
-        MessageBox MB_ICONSTOP "WebView2 尚未准备就绪。请重新启动 Windows 后重试。"
-        SetErrorLevel 1603
-        Abort
-      ${EndIf}
-    ${EndIf}
     DetailPrint "正在安装 Oink…"
     StrCpy $LastResult 1603
+    ClearErrors
+    SetDetailsPrint none
     ${If} $ExistingProduct == "${PRODUCT_CODE}"
       ExecWait '"$SYSDIR\msiexec.exe" /i "$PLUGINSDIR\payload\Oink.msi" REINSTALL=ALL REINSTALLMODE=amus /qn /norestart /l*v "$LogDir\install.log"' $LastResult
     ${Else}
       ExecWait '"$SYSDIR\msiexec.exe" /i "$PLUGINSDIR\payload\Oink.msi" /qn /norestart /l*v "$LogDir\install.log"' $LastResult
+    ${EndIf}
+    SetDetailsPrint lastused
+    ${If} ${Errors}
+      StrCpy $LastResult 1603
     ${EndIf}
     Call CheckResult
     StrCpy $FinishText "安装完成。请从开始菜单打开 Oink。"

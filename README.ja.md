@@ -2,7 +2,7 @@
 
 [Oink v0.3.4](https://github.com/oinkvm/oink/tree/v0.3.4) を基にした **0.3.4-inhouse.110（build 110）** です。公式リリースではありません。元の説明、著作者表示、ライセンスは下に残しています。
 
-[このフォークの Releases](https://github.com/xiaojiangqvq/oink/releases) から `PointerTrail-Setup.exe` を入手し、各 Windows PC で標準のセットアップウィザードに従ってください。完全な Windows x64 パッケージなので原版の事前インストールは不要です。Microsoft 公式 WebView2 オフラインランタイムを同梱し、ない場合だけ追加します。
+[このフォークの Releases](https://github.com/xiaojiangqvq/oink/releases) から `PointerTrail-Setup.exe` を入手し、各 Windows PC で標準のセットアップウィザードに従ってください。インストーラー改訂 2 は完全な Windows x64 アプリと Microsoft の小型 WebView2 ブートストラッパーを含みます。**WebView2 がない場合だけ、ランタイムのダウンロードにインターネット接続が必要です。** アプリは build 110 のままです。
 
 既存の Oink がある場合は、次から選べます。
 
@@ -14,7 +14,7 @@
 
 完了後はスタートメニューから Oink を開きます。**設定 → キーボードとマウス** で、従来の円操作／移動時表示、独立した軌跡色、Windows 矢印の色とサイズを選べます。矢印はほかのアプリにも適用されますが、文字入力やサイズ変更のカーソルは変わりません。システムを選ぶと以前の矢印に戻せます。既存のログイン時起動設定は保持され、新規導入で必要な場合は設定から有効にできます。
 
-今後は[このフォークの Releases](https://github.com/xiaojiangqvq/oink/releases) から手動更新してください。Windows の公式更新フィードは無効です。完全なソースとライセンスも配布します。[ビルド手順](packaging/trail-installer/BUILDING.txt)。macOS パッケージはなく、クリーンな Windows PC での新規インストール実機テストはまだ完了していません。
+今後は[このフォークの Releases](https://github.com/xiaojiangqvq/oink/releases) から手動更新してください。Windows の公式更新フィードは無効です。アプリとインストーラーの完全なソースは EXE に含めず、リリースから別途ダウンロードできます。ライセンス表記は同梱します。[ビルド手順](packaging/trail-installer/BUILDING.txt)。macOS パッケージはなく、クリーンな Windows PC での新規インストール実機テストはまだ完了していません。
 
 ---
 
@@ -38,7 +38,7 @@ Windows 変更版と対応するソースコードは[このフォークの Rele
 対応 OS とバージョン：
 
 - **Mac（上流のみ）**：Apple シリコン（arm64）、macOS 14.2 以降。Intel（x64）、macOS 14.2 以降（未テスト）。この変更版は Windows パッケージのみです。
-- **Windows**：x64、Windows 10 1809（ビルド 17763）以降、または Windows 11。22H2 より前の Windows 10 バージョンは未テストです。拡張版には公式 WebView2 オフラインランタイムを同梱し、Windows LTSC などランタイムがない環境で追加します。
+- **Windows**：x64、Windows 10 1809（ビルド 17763）以降、または Windows 11。22H2 より前の Windows 10 バージョンは未テストです。Windows LTSC など WebView2 がない環境では、インストール時に公式ブートストラッパーがインターネットからランタイムをダウンロードします。
 
 SmartScreen に「Windows によって PC が保護されました」と表示された場合は、選択肢が表示されたときに限り **詳細情報 → 実行** を選んでください。UAC では発行元が不明と表示されることがあります。
 

@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
+import re
 import shutil
 import subprocess
 import sys
@@ -12,10 +13,12 @@ import zipfile
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
-RUNTIME = 'MicrosoftEdgeWebView2RuntimeInstallerX64.exe'
+RUNTIME = 'MicrosoftEdgeWebview2Setup.exe'
+APPLICATION_SOURCE_COMMIT = 'c6d0ca0ae3ee629142bf39f7fbc7805caf6c8bb4'
+APPLICATION_SOURCE_TREE = 'dd7c12c4bb7d3881ee4bdb608510882a9a8c570976bbc6debb78d6efeaf96064'
+APPLICATION_MSI_SHA256 = 'bcdbbb44017817fc2966e3060dd174aac24a0faab1b4e55db8d0a37d3788553a'
 REQUIRED_SUPPORT = ('manifest.json', 'LICENSE', 'LICENSE-ADDITIONAL-TERMS.md', 'NOTICE',
-                    'THIRD_PARTY_LICENSES.md', 'third-party-licenses.json', 'modified-source.zip',
-                    'source-changes.patch', 'installer-source.zip', '使用说明.txt',
+                    'THIRD_PARTY_LICENSES.md', 'third-party-licenses.json', '使用说明.txt',
                     'WEBVIEW2-NOTICE.txt', 'WebView2-LICENSE.txt', 'WIX-LICENSE.txt',
                     'NSIS-LICENSE.txt', 'license.html', 'license.txt')
 
@@ -30,6 +33,8 @@ def sha(path):
 
 def verify_runtime(path):
     record = json.loads((HERE / 'webview2-runtime.json').read_text(encoding='utf-8'))
+    if (record.get('kind'), record.get('filename')) != ('evergreen-bootstrapper', RUNTIME):
+        raise ValueError('Expected the pinned Microsoft WebView2 bootstrapper')
     if sha(path) != record['sha256'] or path.stat().st_size != record['size']:
         raise ValueError('Runtime differs from the pinned Microsoft release')
     command = ("$ErrorActionPreference='Stop'; "
@@ -93,8 +98,19 @@ def verify_payloads(payload, manifest):
             manifest.get('version'), manifest.get('build'), manifest.get('msi_version')) != (
             1, 'third-party-oink-full-installer', 'x64', '0.3.4-inhouse.110', 110, '0.0.110'):
         raise ValueError('Not the expected complete enhanced installer')
+    if (manifest.get('source_commit'), manifest.get('source_tree_sha256')) != (
+            APPLICATION_SOURCE_COMMIT, APPLICATION_SOURCE_TREE):
+        raise ValueError('Application provenance differs from the tested build 110')
+    if (manifest.get('installer_revision'), manifest.get('sources_embedded'),
+            manifest.get('offline_runtime_included')) != (2, False, False):
+        raise ValueError('Expected the compact revision-2 distribution')
+    for field, length in [('installer_source_commit', 40), ('installer_source_tree_sha256', 64)]:
+        if not isinstance(manifest.get(field), str) or not re.fullmatch('[0-9a-f]{' + str(length) + '}', manifest[field]):
+            raise ValueError('Missing or malformed installer provenance: ' + field)
     if set(manifest['files']) != {'Oink.msi', RUNTIME}:
-        raise ValueError('Complete offline payload missing')
+        raise ValueError('Full MSI and lightweight WebView2 bootstrapper are required')
+    if manifest['files']['Oink.msi'] != APPLICATION_MSI_SHA256:
+        raise ValueError('MSI differs from the exact tested build 110 package')
     for name, expected in manifest['files'].items():
         if sha(payload / name) != expected:
             raise ValueError('Embedded package mismatch: ' + name)
@@ -122,6 +138,22 @@ def verify_payloads(payload, manifest):
     verify_runtime(payload / RUNTIME)
 
 
+def verify_installer_source(manifest):
+    """Check the wrapper checkout separately from the unchanged application MSI."""
+    sys.path.insert(0, str(ROOT / 'build-support'))
+    from provenance import source_inventory, source_tree_sha256
+    if (ROOT / '.git').exists():
+        inventory = source_inventory(ROOT)
+        commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
+    else:
+        record = json.loads((ROOT.parent / 'source-inventory.json').read_text(encoding='utf-8'))
+        inventory = record['files']
+        commit = record['source_commit']
+    if (manifest['installer_source_commit'], manifest['installer_source_tree_sha256']) != (
+            commit, source_tree_sha256(ROOT, inventory)):
+        raise ValueError('Installer provenance differs from the current wrapper source')
+
+
 def sevenzip_tool(explicit=None):
     path = explicit or shutil.which('7z') or Path(os.environ.get('ProgramFiles', 'C:/Program Files')) / '7-Zip/7z.exe'
     if not Path(path).is_file():
@@ -129,12 +161,28 @@ def sevenzip_tool(explicit=None):
     return str(Path(path).resolve())
 
 
+def validate_archive_inventory(names):
+    """Reject unexpected content before extracting, including source ZIP leaks."""
+    normalized = [safe_archive_path(name).as_posix() for name in names]
+    if len({name.casefold() for name in normalized}) != len(normalized):
+        raise ValueError('Duplicate installer archive path')
+    required = {'$PLUGINSDIR/payload/Oink.msi', '$PLUGINSDIR/payload/' + RUNTIME}
+    required.update('$PLUGINSDIR/Support/' + name for name in REQUIRED_SUPPORT)
+    engine_assets = {'$PLUGINSDIR/System.dll', '$PLUGINSDIR/nsDialogs.dll'}
+    directories = {'$PLUGINSDIR', '$PLUGINSDIR/Support', '$PLUGINSDIR/payload'}
+    supplied = set(normalized)
+    if supplied - required - engine_assets - directories:
+        raise ValueError('Unexpected embedded installer content (source archives and patches must remain external)')
+    if required - supplied:
+        raise ValueError('Required lightweight installer payload or legal file missing')
+    return supplied
+
+
 def extract(installer, output, sevenzip=None):
     command = sevenzip_tool(sevenzip)
     listing = subprocess.check_output([command, 'l', '-slt', '-ba', '-sccUTF-8', str(installer)], text=True, encoding='utf-8')
-    for line in listing.splitlines():
-        if line.startswith('Path = '):
-            safe_archive_path(line.removeprefix('Path = '))
+    validate_archive_inventory([line.removeprefix('Path = ') for line in listing.splitlines()
+                                if line.startswith('Path = ')])
     extracted = output / ('extracted-' + uuid.uuid4().hex)
     extracted.mkdir(parents=True)
     subprocess.run([command, 'x', '-y', '-bd', '-o' + str(extracted), str(installer)],
@@ -144,26 +192,27 @@ def extract(installer, output, sevenzip=None):
 
 def extract_and_verify(installer, output, sevenzip=None):
     extracted = extract(installer, output, sevenzip)
-    candidates = list(extracted.rglob('manifest.json'))
-    if len(candidates) != 1 or candidates[0].parent.name != 'Support':
-        raise ValueError('Expected exactly one embedded support manifest')
-    support = candidates[0].parent
+    # Recheck actual extracted files as well as 7-Zip's pre-extraction listing.
+    validate_archive_inventory([path.relative_to(extracted).as_posix()
+                                for path in extracted.rglob('*') if path.is_file()])
+    support = extracted / '$PLUGINSDIR' / 'Support'
     payload = support.parent / 'payload'
-    manifest = json.loads(candidates[0].read_text(encoding='utf-8-sig'))
+    manifest = json.loads((support / 'manifest.json').read_text(encoding='utf-8-sig'))
     verify_payloads(payload, manifest)
-    verify_source(support / 'modified-source.zip', manifest)
-    if any(not (support / name).is_file() for name in REQUIRED_SUPPORT):
-        raise ValueError('Embedded source, notice, or license file missing')
-    with zipfile.ZipFile(support / 'installer-source.zip') as source:
-        for name in ('installer.nsi', 'build.py', 'verify_installer.py'):
-            if source.read('packaging/trail-installer/' + name) != (HERE / name).read_bytes():
-                raise ValueError('Embedded installer source mismatch: ' + name)
-    for name in ('WEBVIEW2-NOTICE.txt', 'WebView2-LICENSE.txt', 'NSIS-LICENSE.txt', 'WIX-LICENSE.txt'):
+    for name in ('使用说明.txt', 'WEBVIEW2-NOTICE.txt', 'WebView2-LICENSE.txt', 'NSIS-LICENSE.txt', 'WIX-LICENSE.txt'):
         if (support / name).read_bytes() != (HERE / name).read_bytes():
             raise ValueError('Embedded license differs from reviewed source: ' + name)
-    checks = ['7-Zip extraction without executing installer', 'embedded full MSI and offline runtime hashes',
-              'MSI identity, source metadata and complete component inventory', 'Microsoft runtime signature',
-              'complete source inventory and recomputed tree hash', 'matching installer source and legal notices']
+    for name in ('LICENSE', 'LICENSE-ADDITIONAL-TERMS.md', 'NOTICE', 'THIRD_PARTY_LICENSES.md', 'third-party-licenses.json'):
+        if (support / name).read_bytes() != (ROOT / name).read_bytes():
+            raise ValueError('Embedded application license differs from reviewed source: ' + name)
+    terms = '\n\n'.join((support / name).read_text(encoding='utf-8-sig')
+                        for name in ('WEBVIEW2-NOTICE.txt', 'WebView2-LICENSE.txt'))
+    if (support / 'license.txt').read_text(encoding='utf-16') != terms:
+        raise ValueError('Wizard license text does not include the complete WebView2 notice and terms')
+    checks = ['7-Zip extraction without executing installer', 'exact embedded inventory excludes source archives and patches',
+              'full MSI and lightweight bootstrapper hashes', 'MSI identity, source metadata and complete component inventory',
+              'Microsoft bootstrapper signature', 'separate application and installer provenance references',
+              'matching legal notices and complete WebView2 wizard terms']
     return manifest, extracted, checks
 
 
@@ -178,9 +227,13 @@ def main():
         parser.error('generated outputs must be outside the source repository')
     output.mkdir(parents=True, exist_ok=True)
     manifest, extracted, checks = extract_and_verify(installer, output, args.sevenzip)
+    verify_installer_source(manifest)
+    checks.append('installer commit and recomputed source tree match current wrapper checkout')
     record = {'schema': 1, 'installer_sha256': sha(installer), 'version': manifest['version'],
               'build': manifest['build'], 'source_commit': manifest['source_commit'],
               'source_tree_sha256': manifest['source_tree_sha256'], 'checks': checks,
+              'installer_source_commit': manifest['installer_source_commit'],
+              'installer_source_tree_sha256': manifest['installer_source_tree_sha256'],
               'no_installation_performed': True, 'fresh_machine_installation_tested': False,
               'extracted': str(extracted)}
     (output / 'installer-smoke.json').write_text(json.dumps(record, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')

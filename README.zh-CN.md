@@ -10,7 +10,7 @@
 
 ## 安装
 
-从[本分支 Releases](https://github.com/xiaojiangqvq/oink/releases) 下载 `PointerTrail-Setup.exe`，两台 Windows 电脑分别按标准安装向导操作。完整 Windows x64 安装包可直接用于新电脑，内含微软官方 WebView2 离线运行库，仅在缺少时安装。
+从[本分支 Releases](https://github.com/xiaojiangqvq/oink/releases) 下载 `PointerTrail-Setup.exe`，两台 Windows 电脑分别按标准安装向导操作。安装包修订 2 保留完整 Windows x64 应用，改用微软小型 WebView2 引导程序；**仅在缺少 WebView2 时需要联网下载运行库**。应用仍为 build 110。
 
 检测到已有 Oink 时，可以选择：
 
@@ -22,7 +22,7 @@
 
 完成后从开始菜单打开 Oink。现有登录启动设置会保留；新装如有需要，可在应用设置中开启。尾迹模式由连接鼠标的电脑决定，颜色和箭头由显示它们的电脑决定；早期个人补丁的移动模式会保留，已有明确选择不覆盖。
 
-后续从[本分支 Releases](https://github.com/xiaojiangqvq/oink/releases) 手动升级，Windows 官方更新源已关闭。完整源码、许可证随发布提供；[构建说明](packaging/trail-installer/BUILDING.txt)。本次没有 macOS 安装包，也尚未完成干净 Windows 电脑的全新安装实测。
+后续从[本分支 Releases](https://github.com/xiaojiangqvq/oink/releases) 手动升级，Windows 官方更新源已关闭。应用和安装器的完整源码在发布页单独下载，不塞进 EXE；许可证仍随包保留。[构建说明](packaging/trail-installer/BUILDING.txt)。本次没有 macOS 安装包，也尚未完成干净 Windows 电脑的全新安装实测。
 
 ---
 
@@ -46,7 +46,7 @@ Oink 是 Oink Is Not only a KVM 的缩写，是一款在多台 Windows 和 Mac �
 支持的操作系统和版本：
 
 - **Mac（仅上游）**：Apple 芯片（arm64），macOS 14.2 及以上；Intel（x64），macOS 14.2 及以上（未经测试）。本次修改版仅提供 Windows 安装包。
-- **Windows**：x64，Windows 10 1809（build 17763）及以上，或 Windows 11。22H2 之前的 Windows 10 版本未经测试。增强版安装包内含官方 WebView2 离线运行库，在系统缺少时安装，适用于 Windows LTSC 等未预装运行库的系统。
+- **Windows**：x64，Windows 10 1809（build 17763）及以上，或 Windows 11。22H2 之前的 Windows 10 版本未经测试。Windows LTSC 等系统若缺少 WebView2，安装时由微软官方引导程序联网下载运行库。
 
 如果 SmartScreen 提示“Windows 已保护你的电脑”，仅在出现相应选项时点击 **更多信息 → 仍要运行**。UAC 可能显示发布者未知。
 

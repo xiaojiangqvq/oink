@@ -1,4 +1,4 @@
-"""Build a standard NSIS Modern UI offline installer; never install or elevate it."""
+"""Build a compact NSIS installer with conditional online runtime setup; never install."""
 import argparse
 import hashlib
 import json
@@ -14,10 +14,10 @@ import zipfile
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
-RUNTIME = 'MicrosoftEdgeWebView2RuntimeInstallerX64.exe'
+RUNTIME = 'MicrosoftEdgeWebview2Setup.exe'
 PAYLOAD = ('Oink.msi', RUNTIME)
 EXTRAS = ('LICENSE', 'LICENSE-ADDITIONAL-TERMS.md', 'NOTICE', 'THIRD_PARTY_LICENSES.md',
-          'third-party-licenses.json', 'modified-source.zip', 'source-changes.patch')
+          'third-party-licenses.json')
 DOCS = ('使用说明.txt', 'WEBVIEW2-NOTICE.txt', 'WebView2-LICENSE.txt', 'WIX-LICENSE.txt', 'NSIS-LICENSE.txt')
 
 
@@ -39,13 +39,17 @@ def verify_bundle(bundle):
     from provenance import source_inventory, source_tree_sha256
     inventory = (source_inventory(REPO) if (REPO / '.git').exists() else
                  json.loads((REPO.parent / 'source-inventory.json').read_text(encoding='utf-8'))['files'])
-    if source_tree_sha256(REPO, inventory) != manifest['source_tree_sha256']:
-        raise ValueError('current installer/source differs from the complete bundle source')
-    if (REPO / '.git').exists() and subprocess.check_output(
-            ['git', 'rev-parse', 'HEAD'], cwd=REPO, text=True).strip() != manifest['source_commit']:
-        raise ValueError('current commit differs from full bundle source')
+    if source_tree_sha256(REPO, inventory) != manifest['installer_source_tree_sha256']:
+        raise ValueError('current installer/source differs from the recorded wrapper source')
+    if (REPO / '.git').exists():
+        from versioning import local_source_commit
+        if local_source_commit(root=REPO) != manifest['installer_source_commit']:
+            raise ValueError('current commit differs from wrapper source')
+    if (manifest.get('installer_revision'), manifest.get('sources_embedded'),
+            manifest.get('offline_runtime_included')) != (2, False, False):
+        raise ValueError('expected compact revision-2 installer without source or offline runtime')
     if set(manifest['files']) != set(PAYLOAD):
-        raise ValueError('full MSI and offline WebView2 runtime are required')
+        raise ValueError('full MSI and tiny WebView2 bootstrapper are required')
     for name in PAYLOAD:
         if sha(bundle / 'payload' / name) != manifest['files'][name]:
             raise ValueError('payload hash mismatch: ' + name)
@@ -130,10 +134,10 @@ def support_files(bundle, output):
     extras = {'manifest.json': bundle / 'manifest.json'}
     for name in EXTRAS:
         source = bundle / name
-        if not source.is_file() and name not in ('modified-source.zip', 'source-changes.patch'):
+        if not source.is_file():
             source = REPO / name
         if not source.is_file():
-            raise ValueError('Required source or license artifact missing: ' + name)
+            raise ValueError('Required license artifact missing: ' + name)
         extras[name] = source
     for name in DOCS:
         if not (HERE / name).is_file():
@@ -141,16 +145,12 @@ def support_files(bundle, output):
         extras[name] = HERE / name
     for name, source in extras.items():
         shutil.copy2(source, support / name)
-    with zipfile.ZipFile(support / 'installer-source.zip', 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as zipped:
-        for path in sorted(HERE.rglob('*')):
-            if path.is_file() and '__pycache__' not in path.parts:
-                zipped.write(path, 'packaging/trail-installer/' + path.relative_to(HERE).as_posix())
     sections = [('Oink 许可证', 'LICENSE'), ('附加条款', 'LICENSE-ADDITIONAL-TERMS.md'),
                 ('Microsoft WebView2 说明与隐私', 'WEBVIEW2-NOTICE.txt'),
                 ('Microsoft WebView2 Runtime 许可', 'WebView2-LICENSE.txt'),
                 ('NSIS 许可', 'NSIS-LICENSE.txt'), ('WiX Toolset 许可（应用 MSI）', 'WIX-LICENSE.txt')]
     introduction = ('Oink 指针尾迹增强版\n基于 Oink 0.3.4 的第三方修改版。\n\n'
-                    'WebView2 仅在缺少时安装，适用微软许可。其 Microsoft Defender SmartScreen 功能可能向微软发送安全相关信息。\n'
+                    'WebView2 仅在缺少时联网下载安装，适用微软许可。其 Microsoft Defender SmartScreen 功能可能向微软发送安全相关信息。\n'
                     '微软隐私声明：https://aka.ms/privacy\n'
                     'SmartScreen 说明：https://learn.microsoft.com/en-us/microsoft-edge/privacy-whitepaper#smartscreen\n\n')
     body = '<!doctype html><meta charset="utf-8"><title>Oink 许可与隐私</title>'
@@ -160,8 +160,9 @@ def support_files(bundle, output):
         content = (support / name).read_text(encoding='utf-8-sig')
         body += '<details><summary>' + html.escape(title) + '</summary><pre>' + html.escape(content) + '</pre></details>'
     body += '<h2>源代码与说明</h2><ul>'
-    for name in ['modified-source.zip', 'source-changes.patch', 'installer-source.zip', '使用说明.txt', 'NOTICE', 'THIRD_PARTY_LICENSES.md']:
+    for name in ['使用说明.txt', 'NOTICE', 'THIRD_PARTY_LICENSES.md']:
         body += '<li><a href="' + html.escape(name, quote=True) + '">' + html.escape(name) + '</a></li>'
+    body += '<li><a href="https://github.com/xiaojiangqvq/oink/releases/tag/trail-enhanced-0.3.4-2">应用与安装程序完整源码（单独下载）</a></li>'
     body += '</ul><p>标准安装向导：NSIS Modern UI。完整应用包：WiX MSI。</p>'
     (support / 'license.html').write_text(body, encoding='utf-8')
     # This wizard page is shown only for missing WebView2. Keep its consent
@@ -225,7 +226,10 @@ def main():
         parser.error('output must be empty to avoid mixing installer versions')
     manifest = verify_bundle(bundle)
     verify_runtime(bundle / 'payload' / RUNTIME)
-    verify_source(bundle / 'modified-source.zip', manifest)
+    verify_source(bundle / 'application-source.zip', manifest)
+    verify_source(bundle / 'modified-source.zip', {
+        'source_commit': manifest['installer_source_commit'],
+        'source_tree_sha256': manifest['installer_source_tree_sha256']})
     output.mkdir(parents=True, exist_ok=True)
     support = support_files(bundle, output)
     makensis, tool = compiler(args.tool_cache.resolve())
@@ -238,9 +242,13 @@ def main():
     if verified != manifest:
         raise ValueError('Embedded manifest changed during compilation')
     record = {'schema': 1, 'kind': 'third-party-standard-nsis-installer', 'signed': False,
+              'installer_revision': 2, 'sources_embedded': False, 'offline_runtime_included': False,
+              'installer_source_commit': manifest['installer_source_commit'],
+              'installer_source_tree_sha256': manifest['installer_source_tree_sha256'],
               'version': manifest['version'], 'build': manifest['build'], 'source_commit': manifest['source_commit'],
               'source_tree_sha256': manifest['source_tree_sha256'], 'msi_sha256': manifest['files']['Oink.msi'],
               'webview2_sha256': manifest['files'][RUNTIME], 'source_zip_sha256': sha(bundle / 'modified-source.zip'),
+              'application_source_zip_sha256': sha(bundle / 'application-source.zip'),
               'installer_sha256': sha(executable), 'installer_size': executable.stat().st_size,
               'compiler': {'name': 'NSIS', 'version': tool['version'], 'archive_sha256': tool['sha256'],
                            'makensis_sha256': tool['makensis_sha256']},
